@@ -8,21 +8,24 @@ YOUTUBE_URL_PATTERNS = [
     r'(?:https?://)?(?:www\.)?youtube\.com/embed/([a-zA-Z0-9_-]{11})',
 ]
 
+# To be put in environment variables file
 YOUTUBE_API_BASE_URL="https://www.googleapis.com/youtube/v3"
 YOUTUBE_API_KEY="AIzaSyCcXmsyaptQkv2PTLIJ8BHM63qZsgAuV0I"
+
 def extract_video_id(url: str) -> str | None:
-    url = url.strip()
+    """ Extract video id from youtube url of any form"""
     
+    url = url.strip()   
     for pattern in YOUTUBE_URL_PATTERNS:
         match = re.search(pattern, url)
         if match:
             return match.group(1)
-    
     return None
 
 async def fetch_video_metadata(video_id:str)->dict|None:
     """ Check whether video id actually exists. If exists , extract
     meta data , else return none."""
+    
     async with httpx.AsyncClient() as client:
         response=await client.get(f"{YOUTUBE_API_BASE_URL}/videos",
                                   params={
@@ -40,8 +43,8 @@ async def fetch_video_metadata(video_id:str)->dict|None:
         return None
     
     item=data["items"][0]
-    
     privacy_status=item.get("status",{})
+    
     if privacy_status.get("privacyStatus")=="private":
         return None
     
@@ -80,14 +83,13 @@ async def fetch_caption_tracks(video_id: str) -> list[dict]:
         return []
     
     data = response.json()
-    print(f"fetch_caption_function_log:{data}")
     return data.get("items", [])
 
 def check_video_japanese_suitability(metadata:dict,caption_tracks:list[dict]):
     """ Checks whether the video is Japanese Language video using heuristics"""
+    
     default_lang=metadata.get("default_language","")
     audio_lang=metadata.get("default_audio_language","")
-    
     is_japanese_language=(
         default_lang.startswith("ja") or
         audio_lang.startswith("ja")
@@ -177,16 +179,16 @@ async def validate_video(url:str):
             "error":None
         }
     
- 
-# async def call_pipeline():  
-#     response=await validate_video("https://www.youtube.com/watch?v=tbPOFYwL7Ss")
-#     return response
-               
-# import asyncio
-
-
-# # response=asyncio.run(fetch_video_metadata("HwH9EPUVB6k"))
-# response=asyncio.run(call_pipeline())
-# print(response)
     
+    # async def call_pipeline():  
+    #     response=await validate_video("https://www.youtube.com/watch?v=tbPOFYwL7Ss")
+    #     return response
+                
+    # import asyncio
+
+
+    # # response=asyncio.run(fetch_video_metadata("HwH9EPUVB6k"))
+    # response=asyncio.run(call_pipeline())
+    # print(response)
+        
     
