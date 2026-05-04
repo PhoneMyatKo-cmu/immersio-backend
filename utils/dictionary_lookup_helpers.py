@@ -1,0 +1,134 @@
+from collections import defaultdict
+import json
+import os
+from functools import lru_cache
+from fugashi import Tagger
+from cutlet import Cutlet
+
+@lru_cache(maxsize=1)
+def _load_index() -> dict:
+    path = os.path.join(
+        os.path.dirname(__file__),
+        "data",
+        "jmdict-eng-3.6.2.json"
+    )
+    with open(path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    index = {}
+    for word in data["words"]:
+        # Index by kanji forms
+        for k in word.get("kanji", []):
+            index.setdefault(k["text"], word)
+        # Index by kana forms
+        for k in word.get("kana", []):
+            index.setdefault(k["text"], word)
+
+    return index
+
+def normalize_pos_simple(pos_list: list[str]) -> str:
+    pos_set = set(pos_list)
+
+    # Verb (covers v*, aux-v)
+    if any(p.startswith("v") for p in pos_set) or "aux-v" in pos_set:
+        return "verb"
+
+    # Adjective
+    if any(p.startswith("adj") for p in pos_set):
+        return "adjective"
+
+    # Adverb
+    if "adv" in pos_set:
+        return "adverb"
+
+    # Noun
+    if "n" in pos_set or any(p.startswith("n-") for p in pos_set):
+        return "noun"
+
+    # Others (optional but useful)
+    if "pn" in pos_set:
+        return "pronoun"
+    if "prt" in pos_set:
+        return "particle"
+    if "conj" in pos_set:
+        return "conjunction"
+    if "int" in pos_set:
+        return "interjection"
+
+    return "other"
+
+def extract_group_meanings(senses:list[dict],max_pos=3,max_gloss_per_pos=3):
+    grouped = defaultdict(list)
+
+    for sense in senses:
+        normalized_pos = normalize_pos_simple(sense.get("partOfSpeech", []))
+
+        for g in sense.get("gloss", []):
+            if g.get("lang") == "eng":
+                grouped[normalized_pos].append(g["text"])
+
+    results = []
+    for pos, meanings in list(grouped.items())[:max_pos]:
+        results.append({
+            "pos": pos,
+            "meanings": meanings[:max_gloss_per_pos]
+        })
+
+    return results
+
+
+def lookup_word_full(surface_form: str) -> dict:
+    index = _load_index()
+    entry = index.get(surface_form)
+
+    if not entry:
+        return {"meanings": [], "romanji_reading": surface_form, "found": False}
+
+    # Extract English meanings
+    # print(entry.get("sense",[])[3])
+    # for sense in entry.get("sense", []):
+    #     for gloss in sense.get("gloss", []):
+    #         if gloss.get("lang") == "eng":
+    #             meanings.append(gloss["text"])
+    
+    senses=entry.get("sense",[])
+    meanings= extract_group_meanings(senses)
+    
+    # Extract reading
+    reading = surface_form
+    kana_forms = entry.get("kana", [])
+    if kana_forms:
+        reading = kana_forms[0]["text"]
+    
+    romanji_reading=kana_to_romanji(reading)
+
+    return {
+        "meanings": meanings,
+        "romanji_reading":  romanji_reading,
+        "found":    True
+    }
+    
+def kana_to_romanji(kana:str):
+    """ 
+    return romanji pronunciation reading
+    
+    """
+    converter=Cutlet()
+    romaji_reading=converter.romaji(text=kana,capitalize=False)
+    
+    return romaji_reading
+
+# def surface_to_base_form(surface_token:str):
+#     """ return lemma of word"""
+#     tagger=Tagger()
+#     word=tagger(surface_token)
+#     for w in word:
+#         print(w.surface)
+    # return word.feature.lemma
+
+
+    
+    
+# base=surface_to_base_form("春になると桜のはなが咲きます。")
+# print(lookup_word_full(base))
+print(lookup_word_full("なる"))

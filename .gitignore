@@ -31,3 +31,10 @@ htmlcov/
 .vscode/
 .DS_Store
 Thumbs.db
+
+# custom
+services/romaji_test.py
+utils/data/jmdict-eng-3.6.2.json
+gct_key.json
+utils/test*
+downloads/
