@@ -1,6 +1,7 @@
 from sqlalchemy import text
 from models.video import Video
 from sqlalchemy.orm import Session
+from sqlalchemy import select
 
 async def check_video_exists(youtube_video_id:str,
                              db:Session)->bool:
@@ -61,3 +62,11 @@ async def save_vocabulary_profile():
 
 async def save_difficulty_level():
     pass
+
+def get_video_by_url(url:str,db:Session):
+    stmt = select(Video).where(
+    Video.url == url
+)
+
+    row = db.execute(stmt).scalars().first()
+    return row

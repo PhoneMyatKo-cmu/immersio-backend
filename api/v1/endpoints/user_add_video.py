@@ -1,10 +1,11 @@
 from fastapi import APIRouter,HTTPException,Depends
 from pydantic import BaseModel
 from utils.video_validation_helpers import validate_video
-from services.video_services import save_video,check_video_exists
+from services.video_services import save_video,check_video_exists,get_video_by_url
 from sqlalchemy.ext.asyncio import AsyncSession
 from db.base import get_db
-
+from services.caption_services import save_tokenized_captions
+from utils.captions_helpers import fetch_raw_captions,tokenize_captions
 router=APIRouter(prefix="/add-video")
 
 class VideoUrl(BaseModel):
@@ -34,12 +35,26 @@ async def add_video(data:VideoUrl,
         suitability=validation_result["suitablity"],
         db=db
     )
+    saved_video_db_id=get_video_by_url(video_id,db).id
+    
+    raw_captions=fetch_raw_captions(video_id)
+    tokenized_captions=tokenize_captions(raw_captions)
+    caption_len=0
+    try:
+        caption_len=save_tokenized_captions(tokenized_captions,saved_video_db_id,db)
+    except Exception:
+        print("Db error")
+    
+    print(f"Captions len:{caption_len}")
+    
+    
     
        
     return {
         "status":"success",
         "error":None,
-        "title":video["title"]
+        "title":video["title"],
+        "caption_len":caption_len
     }
 
     
