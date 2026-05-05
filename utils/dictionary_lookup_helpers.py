@@ -4,6 +4,8 @@ import os
 from functools import lru_cache
 from fugashi import Tagger
 from cutlet import Cutlet
+from google.cloud import translate
+from pathlib import Path
 
 @lru_cache(maxsize=1)
 def _load_index() -> dict:
@@ -78,27 +80,27 @@ def extract_group_meanings(senses:list[dict],max_pos=3,max_gloss_per_pos=3):
 
 
 def lookup_word_full(surface_form: str) -> dict:
+    
+    if not is_japanese(surface_form):
+        return {"meanings":[{"pos":None,"meanings":None}],
+                "romanji_reading":None,
+                "found":False}
     index = _load_index()
     entry = index.get(surface_form)
 
-    if not entry:
-        return {"meanings": [], "romanji_reading": surface_form, "found": False}
-
-    # Extract English meanings
-    # print(entry.get("sense",[])[3])
-    # for sense in entry.get("sense", []):
-    #     for gloss in sense.get("gloss", []):
-    #         if gloss.get("lang") == "eng":
-    #             meanings.append(gloss["text"])
-    
-    senses=entry.get("sense",[])
-    meanings= extract_group_meanings(senses)
-    
-    # Extract reading
+    meanings=[]
     reading = surface_form
-    kana_forms = entry.get("kana", [])
-    if kana_forms:
-        reading = kana_forms[0]["text"]
+    if entry:
+        senses=entry.get("sense",[])
+        meanings= extract_group_meanings(senses)
+        kana_forms = entry.get("kana", [])
+        if kana_forms:
+            reading = kana_forms[0]["text"]
+    
+
+    if not meanings or not any(m["meanings"] for m in meanings):
+        print("No meaning")
+        meanings=[{"pos":"web_translate","meanings":fall_back_google_translate(surface_form)}]
     
     romanji_reading=kana_to_romanji(reading)
 
@@ -107,28 +109,45 @@ def lookup_word_full(surface_form: str) -> dict:
         "romanji_reading":  romanji_reading,
         "found":    True
     }
+  
     
+converter=Cutlet()
 def kana_to_romanji(kana:str):
     """ 
     return romanji pronunciation reading
     
     """
-    converter=Cutlet()
     romaji_reading=converter.romaji(text=kana,capitalize=False)
     
     return romaji_reading
 
-# def surface_to_base_form(surface_token:str):
-#     """ return lemma of word"""
-#     tagger=Tagger()
-#     word=tagger(surface_token)
-#     for w in word:
-#         print(w.surface)
-    # return word.feature.lemma
 
 
     
     
-# base=surface_to_base_form("春になると桜のはなが咲きます。")
-# print(lookup_word_full(base))
-print(lookup_word_full("なる"))
+BASE_DIR = Path(__file__).resolve().parent.parent 
+key_path=BASE_DIR / "gct_key.json"
+client = translate.TranslationServiceClient.from_service_account_json(key_path)
+
+parent = "projects/nlp-image-ocr/locations/global"
+
+def fall_back_google_translate(japanese_form:str):
+    print("Google Translation Running!")
+    response = client.translate_text(
+        contents=[japanese_form],
+        target_language_code="en",
+        parent=parent
+        )
+    # print(response.translations)
+
+    return [t.translated_text for t in response.translations]
+
+
+import re
+
+def is_japanese(text):
+    return re.search(r'[\u3040-\u30ff\u4e00-\u9fff]', text) is not None
+
+
+
+print(lookup_word_full("歌っ"))

@@ -10,11 +10,12 @@ def save_vocabularies(tokens:list,db:Session):
             print(f"Duplicate:{token}")
             continue
         looked_up_token=lookup_word_full(token)
-        vocab=Vocabulary(
-            japanese_form=token,
-            reading=looked_up_token["romanji_reading"],
-            senses=looked_up_token["meanings"]   
-        )
+        if looked_up_token["found"]:
+            vocab=Vocabulary(
+                japanese_form=token,
+                reading=looked_up_token["romanji_reading"],
+                senses=looked_up_token["meanings"]   
+            )
         db.add(vocab)
     db.commit()
     return tokens
