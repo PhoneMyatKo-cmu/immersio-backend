@@ -45,3 +45,5 @@ class Vocabulary(Base):
         nullable=False,
         default=EstimatedLevel.unknown
     )
+    
+    

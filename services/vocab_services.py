@@ -16,7 +16,7 @@ def save_vocabularies(tokens:list,db:Session):
                 reading=looked_up_token["romanji_reading"],
                 senses=looked_up_token["meanings"]   
             )
-        db.add(vocab)
+            db.add(vocab)
     db.commit()
     return tokens
 

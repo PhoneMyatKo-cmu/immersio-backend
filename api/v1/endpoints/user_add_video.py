@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from db.base import get_db
 from services.caption_services import save_tokenized_captions
 from services.vocab_services import save_vocabularies
-from utils.captions_helpers import fetch_raw_captions,tokenize_captions
+from utils.captions_helpers import fetch_raw_captions,tokenize_captions,process_captions
 router=APIRouter(prefix="/add-video")
 
 class VideoUrl(BaseModel):
@@ -39,12 +39,12 @@ async def add_video(data:VideoUrl,
     saved_video_db_id=get_video_by_url(video_id,db).id
     
     raw_captions=fetch_raw_captions(video_id)
-    tokenized_captions=tokenize_captions(raw_captions)
+    processed_captions=process_captions(raw_captions)
     caption_len=0
-    flattened_token=[t for caption in tokenized_captions for t in caption["tokens"]]
+    flattened_token=[t["surface"] for caption in processed_captions for t in caption["tokens"]]
     print(flattened_token[:5])
     try:
-        caption_len=save_tokenized_captions(tokenized_captions,saved_video_db_id,db)
+        caption_len=save_tokenized_captions(processed_captions,saved_video_db_id,db)
     except Exception:
         print("Db error")
     
