@@ -7,7 +7,7 @@ from db.base import get_db
 from services.caption_services import save_tokenized_captions
 from services.vocab_services import save_vocabularies
 from utils.captions_helpers import fetch_raw_captions,tokenize_captions,process_captions
-from utils.sentence_reconstruction import reconstruct_as_dicts
+from utils.sentence_reconstruction import reconstruct_sentence_for_auto_generate,reconstruct_sentence_for_manual
 from services.context_sentence_services import save_context_sentence
 
 router=APIRouter(prefix="/add-video")
@@ -56,8 +56,17 @@ async def add_video(data:VideoUrl,
     
     
     # Sentence saving
-    context_sentences=reconstruct_as_dicts(video_id)
-    saved_sentences=save_context_sentence(context_sentences,saved_video_db_id,db)  
+    available_caption=validation_result["suitablity"]["available_captions"]
+    is_auto_generated=False
+    for track in available_caption:
+        is_auto = track.get("trackKind") == "asr"
+    
+    if is_auto_generated:    
+        context_sentences=reconstruct_sentence_for_auto_generate(video_id)
+    else:
+        context_sentences=reconstruct_sentence_for_manual(processed_captions)
+    saved_sentences=save_context_sentence(context_sentences,saved_video_db_id,db)
+      
     return {
         "status":"success",
         "error":None,

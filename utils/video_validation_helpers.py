@@ -109,6 +109,7 @@ def check_video_japanese_suitability(metadata:dict,caption_tracks:list[dict]):
             "is_suitable":False,
             "has_japanese_captions":False,
             "reason":"No Japanese Captions for this video.",
+            "available_captions":japanese_captions
             
         }
     
@@ -116,13 +117,15 @@ def check_video_japanese_suitability(metadata:dict,caption_tracks:list[dict]):
         return {
             "is_suitable":False,
             "has_japanese_captions":True,
-            "reason":"Audio Language is not Japanese"
+            "reason":"Audio Language is not Japanese",
+            "available_captions":japanese_captions 
         }
     
     return {
              "is_suitable":True,
             "has_japanese_captions":True,
-            "reason":None
+            "reason":None,
+            "available_captions":japanese_captions
         
     }
 
@@ -180,15 +183,15 @@ async def validate_video(url:str):
         }
     
     
-    # async def call_pipeline():  
-    #     response=await validate_video("https://www.youtube.com/watch?v=tbPOFYwL7Ss")
-    #     return response
+# import asyncio
+# async def call_pipeline():  
+#         response=await validate_video("https://www.youtube.com/watch?v=kHfxdY7w96g")
+#         return response
                 
-    # import asyncio
 
 
-    # # response=asyncio.run(fetch_video_metadata("HwH9EPUVB6k"))
-    # response=asyncio.run(call_pipeline())
-    # print(response)
+#     # response=asyncio.run(fetch_video_metadata("HwH9EPUVB6k"))
+# response=asyncio.run(call_pipeline())
+# print(response)
         
     

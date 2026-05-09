@@ -726,10 +726,22 @@ def to_dict(unit: MeaningUnit, sentence_index: int) -> dict:
         "sentence_index": sentence_index,
     }
     
-def reconstruct_as_dicts(video_id: str, lang: str = "ja", **kwargs) -> List[dict]:
+def reconstruct_sentence_for_auto_generate(video_id: str, lang: str = "ja", **kwargs) -> List[dict]:
     """Public API: returns list of dicts in the application's expected format."""
     units = reconstruct(video_id, lang, **kwargs)
     return [to_dict(u, idx) for idx, u in enumerate(units)]
+
+def reconstruct_sentence_for_manual(captions:list[dict])-> List[dict]:
+    return [
+        {
+            "text":caption["text"],
+            "start":round(caption["start"],3),
+            "end":round(caption["end"],3),
+            "duration":round(caption["duration"],3),
+            "sentence_index":caption["index"]
+        } for caption in captions
+    ]
+    
 # =====================================================================
 # Quick test harness
 # =====================================================================
