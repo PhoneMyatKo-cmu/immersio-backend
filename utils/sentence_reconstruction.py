@@ -138,7 +138,7 @@ def fetch_tokens(video_id: str, lang: str = "ja") -> List[Token]:
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=False)
     
-    # Prefer manual subs, fall back to auto-generated
+    # Prefer manual subs, fall back to auto-generated ** need to change this
     subs = info.get("subtitles", {}).get(lang) or \
            info.get("automatic_captions", {}).get(lang)
     if not subs:

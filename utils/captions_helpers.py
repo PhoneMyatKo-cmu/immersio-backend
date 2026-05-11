@@ -1,15 +1,114 @@
 from youtube_transcript_api import YouTubeTranscriptApi
 from fugashi import Tagger
 from copy import deepcopy
+import html
+import requests
+import re
+import yt_dlp
 
 ytt_api=YouTubeTranscriptApi()
 tagger = Tagger()
 
-def fetch_raw_captions(video_id:str):
+def fetch_raw_captions_deprecated(video_id:str):
     snippets= ytt_api.fetch(video_id,languages=("ja",)).snippets
     return [{"index":i,"text":snippet.text,"start":snippet.start,"duration":snippet.duration} for i,snippet in enumerate(snippets)]
 
-raw_captions=fetch_raw_captions("vZmCtYoIRLU")
+def fetch_raw_captions(video_id: str, lang: str = "ja") -> list[dict]:
+    """
+    Line-level captions matching youtube-transcript-api's output format.
+    Uses yt-dlp + json3 for resilience against IP bans.
+    """
+    # ydl_opts = {
+    #     "skip_download": True,
+    #     "quiet": True,
+    #     "no_warnings": True,
+    #     "writesubtitles": True,
+    #     "writeautomaticsub": True,
+    #     "subtitleslangs": [lang],
+    #     "subtitlesformat": "json3",
+    #     "extractor_args": {
+    #         "youtube": {
+    #             "player_client": ["web"],
+    #             "skip": ["hls", "dash", "translated_subs"],
+    #         }
+    #     },
+    # }
+    ydl_opts = {"skip_download": True, "quiet": True, "no_warnings": True,"format":None,"extract_flat":False}
+
+    url = f"https://www.youtube.com/watch?v={video_id}"
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        info = ydl.extract_info(url, download=False)
+    
+    subs = info.get("subtitles", {}).get(lang) or \
+           info.get("automatic_captions", {}).get(lang)
+    if not subs:
+        raise RuntimeError(f"No {lang} captions available for {video_id}")
+    
+    json3_entry = next((s for s in subs if s["ext"] == "json3"), None)
+    if not json3_entry:
+        raise RuntimeError("No json3 format available")
+    
+    data = requests.get(json3_entry["url"]).json()
+    
+    snippets = []
+    index = 0
+    
+    for event in data.get("events", []):
+        if "segs" not in event:
+            continue
+        
+        # Aggregate sub-segments into one line
+        raw_text = "".join(s.get("utf8", "") for s in event["segs"])
+        
+        # Skip newline-only events
+        if not raw_text.strip() or raw_text == "\n":
+            continue
+        
+        # Normalize: decode HTML entities, collapse whitespace
+        text = html.unescape(raw_text)
+        text = re.sub(r"\s+", " ", text).strip()
+        
+        if not text:
+            continue
+        
+        snippets.append({
+            "index": index,
+            "text": text,
+            "start": round(event.get("tStartMs", 0) / 1000.0, 3),
+            "duration": round(event.get("dDurationMs", 0) / 1000.0, 3),
+        })
+        index += 1
+    
+    # Deduplicate rolling overlap (matters for auto-generated captions)
+    snippets = _deduplicate_rolling(snippets)
+    
+    # Re-index after dedup
+    for i, snippet in enumerate(snippets):
+        snippet["index"] = i
+    
+    return snippets
+
+
+def _deduplicate_rolling(snippets):
+    """Remove rolling-caption overlap common in auto-generated content."""
+    if not snippets:
+        return snippets
+    
+    cleaned = [snippets[0]]
+    for snippet in snippets[1:]:
+        prev = cleaned[-1]
+        current_text = snippet["text"]
+        
+        if current_text.startswith(prev["text"]) and len(current_text) > len(prev["text"]):
+            cleaned[-1] = snippet
+        elif prev["text"].startswith(current_text):
+            continue
+        else:
+            cleaned.append(snippet)
+    
+    return cleaned
+
+# raw_captions=fetch_raw_captions("vZmCtYoIRLU")
 
 
 # text = "麩菓子は、麩を主材料とした日本の菓子。"

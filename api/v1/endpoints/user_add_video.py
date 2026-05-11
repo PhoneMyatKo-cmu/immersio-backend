@@ -57,14 +57,23 @@ async def add_video(data:VideoUrl,
     
     # Sentence saving
     available_caption=validation_result["suitablity"]["available_captions"]
-    is_auto_generated=False
+    print(f"Available captions:{available_caption}")
+    is_standard=False
     for track in available_caption:
-        is_auto = track.get("trackKind") == "asr"
+        if track.get("snippet","").get("trackKind") == "standard":
+            is_standard=True
+        
+        
+            
     
-    if is_auto_generated:    
-        context_sentences=reconstruct_sentence_for_auto_generate(video_id)
-    else:
+    if is_standard:    
+        print("Manual Route")
         context_sentences=reconstruct_sentence_for_manual(processed_captions)
+
+    else:
+        
+        context_sentences=reconstruct_sentence_for_auto_generate(video_id)
+        
     saved_sentences=save_context_sentence(context_sentences,saved_video_db_id,db)
       
     return {
