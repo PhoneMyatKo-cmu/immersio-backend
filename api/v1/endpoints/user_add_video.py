@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from utils.video_validation_helpers import validate_video
 from services.video_services import save_video,check_video_exists,get_video_by_url
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 from db.base import get_db
 from services.caption_services import save_tokenized_captions
 from services.vocab_services import save_vocabularies
@@ -16,10 +17,10 @@ class VideoUrl(BaseModel):
     youtube_url:str
 
 @router.post("/")
-async def add_video(data:VideoUrl,
-                    db:AsyncSession=Depends(get_db)):
+def add_video(data:VideoUrl,
+                    db:Session=Depends(get_db)):
     
-    validation_result=await validate_video(data.youtube_url)
+    validation_result=validate_video(data.youtube_url)
     if not validation_result["valid"]:
         return {
             "status":"fail",
@@ -27,14 +28,14 @@ async def add_video(data:VideoUrl,
         }
         
     video_id=validation_result["video_id"]
-    is_video_existing=await check_video_exists(video_id,db)
+    is_video_existing=check_video_exists(video_id,db)
     if is_video_existing:
         return {
             "status":"fail",
             "error": "Already exists"
         }
     
-    video = await save_video(
+    video = save_video(
         meta_data=validation_result["meta_data"],
         suitability=validation_result["suitablity"],
         db=db

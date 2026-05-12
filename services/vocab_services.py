@@ -22,10 +22,12 @@ def save_vocabularies(tokens:list,db:Session):
 
 
 def check_duplicate(japanese_form:str,db:Session):
-    result=db.execute(
-                        text("SELECT id FROM vocabulary WHERE japanese_form = :jf"),
-                        {"jf":japanese_form}
-                    )
+    # result=db.execute(
+    #                     text("SELECT id FROM vocabulary WHERE japanese_form = :jf"),
+    #                     {"jf":japanese_form}
+    #                 )
     
-    return result.fetchone() is not None
+    result=db.scalars(select(Vocabulary).where(Vocabulary.japanese_form==japanese_form)).first()
+    
+    return result is not None
         

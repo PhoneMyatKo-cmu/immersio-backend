@@ -22,12 +22,12 @@ def extract_video_id(url: str) -> str | None:
             return match.group(1)
     return None
 
-async def fetch_video_metadata(video_id:str)->dict|None:
+def fetch_video_metadata(video_id:str)->dict|None:
     """ Check whether video id actually exists. If exists , extract
     meta data , else return none."""
     
-    async with httpx.AsyncClient() as client:
-        response=await client.get(f"{YOUTUBE_API_BASE_URL}/videos",
+    client=httpx.Client()
+    response=client.get(f"{YOUTUBE_API_BASE_URL}/videos",
                                   params={
                                       "id":video_id,
                                       "part":"snippet,contentDetails,status",
@@ -64,13 +64,14 @@ async def fetch_video_metadata(video_id:str)->dict|None:
     }
     
     
-async def fetch_caption_tracks(video_id: str) -> list[dict]:
+def fetch_caption_tracks(video_id: str) -> list[dict]:
     """
     Fetches available caption tracks for a video.
     Returns list of caption track objects.
     """
-    async with httpx.AsyncClient() as client:
-        response = await client.get(
+    
+    client=httpx.Client()
+    response = client.get(
             f"{YOUTUBE_API_BASE_URL}/captions",
             params={
                 "videoId": video_id,
@@ -129,7 +130,7 @@ def check_video_japanese_suitability(metadata:dict,caption_tracks:list[dict]):
         
     }
 
-async def validate_video(url:str):
+def validate_video(url:str):
     """ Validation pipeline to check whether the url is valid Japanese Youtube video useful for learning."""
     
     video_id=extract_video_id(url)
@@ -143,7 +144,7 @@ async def validate_video(url:str):
         }
     
     try:
-        meta_data=await fetch_video_metadata(video_id)
+        meta_data=fetch_video_metadata(video_id)
     except Exception:
         return {
             "valid":False,
@@ -162,7 +163,7 @@ async def validate_video(url:str):
             "error":"Video Unavailable."
         }
     
-    caption_tracks=await fetch_caption_tracks(video_id)
+    caption_tracks=fetch_caption_tracks(video_id)
     japanese_suitablility= check_video_japanese_suitability(meta_data,caption_tracks)
     
     if not japanese_suitablility["is_suitable"]:

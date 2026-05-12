@@ -150,4 +150,4 @@ def is_japanese(text):
 
 
 
-print(lookup_word_full("歌っ"))
+# print(lookup_word_full("歌っ"))
