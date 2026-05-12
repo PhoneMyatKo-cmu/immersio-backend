@@ -12,9 +12,9 @@ def check_video_exists(youtube_video_id:str,
     #                     {"vid":youtube_video_id}
     #                 )
     result=db.scalars(
-        select(Video).where(Video.url==youtube_video_id)).first()
+        select(Video).where(Video.youtube_video_id==youtube_video_id)).first()
     
-    
+
     return result is not None
 
 
@@ -23,7 +23,7 @@ def save_video(meta_data:dict , suitability : dict, db:Session ):
     
     # duration_funtion to be implemented later
     video=Video(
-        url=meta_data["video_id"],
+        youtube_video_id=meta_data["video_id"],
         title=meta_data["title"],
         thumbnail_url=meta_data["thumbnail_url"],
         channel_name=meta_data["channel_name"],
@@ -43,9 +43,9 @@ def save_vocabulary_profile():
 def save_difficulty_level():
     pass
 
-def get_video_by_url(url:str,db:Session):
+def get_video_by_youtube_video_id(youtube_video_id:str,db:Session):
     stmt = select(Video).where(
-    Video.url == url
+    Video.youtube_video_id == youtube_video_id
 )
 
     row = db.execute(stmt).scalars().first()

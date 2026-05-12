@@ -33,7 +33,7 @@ class Vocabulary(Base):
         nullable=False
     )
 
-    senses: Mapped[dict] = mapped_column(
+    meanings: Mapped[dict] = mapped_column(
         JSONB,
         nullable=False,
         default=list

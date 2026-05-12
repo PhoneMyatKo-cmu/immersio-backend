@@ -17,7 +17,7 @@ class Video(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
 
-    url: Mapped[str] = mapped_column(
+    youtube_video_id: Mapped[str] = mapped_column(
         String(500),
         nullable=False
     )

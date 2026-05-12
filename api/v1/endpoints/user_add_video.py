@@ -1,7 +1,7 @@
 from fastapi import APIRouter,HTTPException,Depends
 from pydantic import BaseModel
 from utils.video_validation_helpers import validate_video
-from services.video_services import save_video,check_video_exists,get_video_by_url
+from services.video_services import save_video,check_video_exists,get_video_by_youtube_video_id
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 from db.base import get_db
@@ -35,28 +35,11 @@ def add_video(data:VideoUrl,
             "error": "Already exists"
         }
     
-    video = save_video(
-        meta_data=validation_result["meta_data"],
-        suitability=validation_result["suitablity"],
-        db=db
-    )
-    
-    saved_video_db_id=get_video_by_url(video_id,db).id
     raw_captions=fetch_raw_captions(video_id)
     processed_captions=process_captions(raw_captions)
     caption_len=0
     flattened_token=[t["surface"] for caption in processed_captions for t in caption["tokens"]]
-    # print(flattened_token[:5])
-    try:
-        caption_len=save_tokenized_captions(processed_captions,saved_video_db_id,db)
-    except Exception:
-        print("Db error")
     
-    
-    save_vocabularies(flattened_token,db)
-    
-    
-    # Sentence saving
     available_caption=validation_result["suitablity"]["available_captions"]
     print(f"Available captions:{available_caption}")
     is_standard=False
@@ -64,9 +47,6 @@ def add_video(data:VideoUrl,
         if track.get("snippet","").get("trackKind") == "standard":
             is_standard=True
         
-        
-            
-    
     if is_standard:    
         print("Manual Route")
         context_sentences=reconstruct_sentence_for_manual(processed_captions)
@@ -74,8 +54,31 @@ def add_video(data:VideoUrl,
     else:
         
         context_sentences=reconstruct_sentence_for_auto_generate(video_id)
+    
+    
+    try:
+        video = save_video(
+        meta_data=validation_result["meta_data"],
+        suitability=validation_result["suitablity"],
+        db=db
+    )
+    
+        saved_video_db_id=get_video_by_youtube_video_id(video_id,db).id
+        # print(flattened_token[:5])
+
+        caption_len=save_tokenized_captions(processed_captions,saved_video_db_id,db)
+
+        save_vocabularies(flattened_token,db)
         
-    saved_sentences=save_context_sentence(context_sentences,saved_video_db_id,db)
+        saved_sentences=save_context_sentence(context_sentences,saved_video_db_id,db)
+        
+    except Exception:
+        print("Db error")
+    
+    
+    
+    
+           
       
     return {
         "status":"success",
