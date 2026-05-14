@@ -1,6 +1,12 @@
 import re
 import httpx
+from dotenv import load_dotenv
+import os
 
+load_dotenv()
+
+
+# Youtube has 4 distinct url patterns
 YOUTUBE_URL_PATTERNS = [
     r'(?:https?://)?(?:www\.)?youtube\.com/watch\?v=([a-zA-Z0-9_-]{11})',
     r'(?:https?://)?(?:www\.)?youtube\.com/shorts/([a-zA-Z0-9_-]{11})',
@@ -9,8 +15,8 @@ YOUTUBE_URL_PATTERNS = [
 ]
 
 # To be put in environment variables file
-YOUTUBE_API_BASE_URL="https://www.googleapis.com/youtube/v3"
-YOUTUBE_API_KEY="AIzaSyCcXmsyaptQkv2PTLIJ8BHM63qZsgAuV0I"
+YOUTUBE_API_BASE_URL=os.getenv("YOUTUBE_API_BASE_URL")
+YOUTUBE_API_KEY=os.getenv("YOUTUBE_API_KEY")
 
 def extract_video_id(url: str) -> str | None:
     """ Extract video id from youtube url of any form"""
@@ -59,7 +65,8 @@ def fetch_video_metadata(video_id:str)->dict|None:
         "duration_iso":content_details.get("duration"),
         "default_language":snippet.get("defaultLanguage"),
         "default_audio_language":snippet.get("defaultAudioLanguage"),
-        "tags":snippet.get("tags",[])
+        "tags":snippet.get("tags",[]),
+        "duration":content_details.get("duration")
         
     }
     

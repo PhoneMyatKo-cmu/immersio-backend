@@ -2,19 +2,17 @@ from sqlalchemy import text
 from models.video import Video
 from sqlalchemy.orm import Session
 from sqlalchemy import select
+import isodate
 
 def check_video_exists(youtube_video_id:str,
                              db:Session)->Video | None:
     
-    """ Check whether video exists in the database"""
-    # result=db.execute(
-    #                     text("SELECT id FROM videos WHERE url = :vid"),
-    #                     {"vid":youtube_video_id}
-    #                 )
+    """ Check whether video exists in the database
+        Return video if exists, none if doesn't exist
+    """
+    
     result=db.scalars(
         select(Video).where(Video.youtube_video_id==youtube_video_id)).first()
-    
-
     return result 
 
 
@@ -27,7 +25,7 @@ def save_video(meta_data:dict , suitability : dict, db:Session ):
         title=meta_data["title"],
         thumbnail_url=meta_data["thumbnail_url"],
         channel_name=meta_data["channel_name"],
-        duration_seconds=100,
+        duration_seconds=isodate.parse_duration(meta_data["duration"]).total_seconds(),
     )
     db.add(video)
     db.commit()
