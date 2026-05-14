@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import select
 
 def check_video_exists(youtube_video_id:str,
-                             db:Session)->bool:
+                             db:Session)->Video | None:
     
     """ Check whether video exists in the database"""
     # result=db.execute(
@@ -15,7 +15,7 @@ def check_video_exists(youtube_video_id:str,
         select(Video).where(Video.youtube_video_id==youtube_video_id)).first()
     
 
-    return result is not None
+    return result 
 
 
 def save_video(meta_data:dict , suitability : dict, db:Session ):

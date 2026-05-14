@@ -115,7 +115,24 @@ def fetch_tokens(video_id: str, lang: str = "ja") -> List[Token]:
     Fetch YouTube captions in json3 format and convert to sub-segment tokens.
     Each token has audio-grounded start/end times from YouTube's ASR.
     """
-    ydl_opts = {"skip_download": True, "quiet": True, "no_warnings": True,"format":None,"extract_flat":False}
+    ydl_opts = {"skip_download": True, 
+                "quiet": True, 
+                "no_warnings": True,
+                "format":None,
+                "extract_flat":False,
+                
+                "writesubtitles": True,
+                "writeautomaticsub": True,
+                "subtitleslangs": ["ja"],
+                "subtitlesformat": "json3",
+                
+                "extractor_args": {
+                "youtube": {
+                    "player_client": ["web", "android", "ios"],  # try multiple clients
+                    "skip": ["hls", "dash", "translated_subs"],  # skip stream manifests
+        }
+    },
+                }
 #     ydl_opts = {
 #     "skip_download": True,
 #     "quiet": True,

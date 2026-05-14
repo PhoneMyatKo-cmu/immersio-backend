@@ -16,26 +16,40 @@ router=APIRouter(prefix="/add-video")
 class VideoUrl(BaseModel):
     youtube_url:str
 
+class SubmissionResponse(BaseModel):
+    message:str
+    video_id:int
+    video_title:str
+    
+
 @router.post("/")
 def add_video(data:VideoUrl,
-                    db:Session=Depends(get_db)):
+                    db:Session=Depends(get_db))->SubmissionResponse:
     
     validation_result=validate_video(data.youtube_url)
     if not validation_result["valid"]:
-        return {
-            "status":"fail",
-            "error":validation_result["error"]  
-        }
+        # return {
+        #     "status":"fail",
+        #     "error":validation_result["error"]  
+        # }
+        raise HTTPException(400,validation_result["error"])
         
-    video_id=validation_result["video_id"]
-    is_video_existing=check_video_exists(video_id,db)
-    if is_video_existing:
-        return {
-            "status":"fail",
-            "error": "Already exists"
-        }
+    youtube_video_id=validation_result["video_id"]
+    video_existing=check_video_exists(youtube_video_id,db)
+    if video_existing:
+        # return {
+        #     "status":"fail",
+        #     "error": "Already exists"
+        # }
+        return SubmissionResponse(message="Video already exists.",video_id=video_existing.id,video_title=video_existing.title)
     
-    raw_captions=fetch_raw_captions(video_id)
+    raw_captions=[]
+    try:
+        
+        raw_captions=fetch_raw_captions(youtube_video_id)
+    except Exception  as e:
+        print(e)
+        raise HTTPException(500,"Server Error")
     processed_captions=process_captions(raw_captions)
     caption_len=0
     flattened_token=[t["surface"] for caption in processed_captions for t in caption["tokens"]]
@@ -53,7 +67,7 @@ def add_video(data:VideoUrl,
 
     else:
         
-        context_sentences=reconstruct_sentence_for_auto_generate(video_id)
+        context_sentences=reconstruct_sentence_for_auto_generate(youtube_video_id)
     
     
     try:
@@ -62,31 +76,24 @@ def add_video(data:VideoUrl,
         suitability=validation_result["suitablity"],
         db=db
     )
-    
-        saved_video_db_id=get_video_by_youtube_video_id(video_id,db).id
+        
+        saved_video_id=get_video_by_youtube_video_id(youtube_video_id,db).id
         # print(flattened_token[:5])
 
-        caption_len=save_tokenized_captions(processed_captions,saved_video_db_id,db)
+        caption_len=save_tokenized_captions(processed_captions,saved_video_id,db)
 
         save_vocabularies(flattened_token,db)
         
-        saved_sentences=save_context_sentence(context_sentences,saved_video_db_id,db)
+        saved_sentences=save_context_sentence(context_sentences,saved_video_id,db)
         
     except Exception:
         print("Db error")
+        raise HTTPException(500,"Server Error , Please Try again later.")
     
-    
-    
-    
-           
       
-    return {
-        "status":"success",
-        "error":None,
-        "title":video["title"],
-        "video_db_id":saved_video_db_id,
-        "caption_len":caption_len,
-        "num_of_sentence":saved_sentences["number_of_sentences"]
-    }
-
+    return  SubmissionResponse(
+        message="Successful",
+        video_id=saved_video_id,
+        video_title=video["title"]
+    )
     
