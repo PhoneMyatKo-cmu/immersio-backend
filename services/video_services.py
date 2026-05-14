@@ -20,15 +20,19 @@ def save_video(meta_data:dict , suitability : dict, db:Session ):
     """ save video metadata to the database"""
     
     # duration_funtion to be implemented later
-    video=Video(
-        youtube_video_id=meta_data["video_id"],
-        title=meta_data["title"],
-        thumbnail_url=meta_data["thumbnail_url"],
-        channel_name=meta_data["channel_name"],
-        duration_seconds=isodate.parse_duration(meta_data["duration"]).total_seconds(),
-    )
-    db.add(video)
-    db.commit()
+    try:
+        video=Video(
+            youtube_video_id=meta_data["video_id"],
+            title=meta_data["title"],
+            thumbnail_url=meta_data["thumbnail_url"],
+            channel_name=meta_data["channel_name"],
+            duration_seconds=isodate.parse_duration(meta_data["duration"]).total_seconds(),
+        )
+        db.add(video)
+        db.commit()
+    except Exception as e:
+        print(e)
+        raise e
     
     return{
         "title":meta_data["title"]

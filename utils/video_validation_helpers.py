@@ -191,15 +191,5 @@ def validate_video(url:str):
         }
     
     
-# import asyncio
-# async def call_pipeline():  
-#         response=await validate_video("https://www.youtube.com/watch?v=kHfxdY7w96g")
-#         return response
-                
-
-
-#     # response=asyncio.run(fetch_video_metadata("HwH9EPUVB6k"))
-# response=asyncio.run(call_pipeline())
-# print(response)
         
     

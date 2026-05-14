@@ -6,6 +6,11 @@ import requests
 import re
 import yt_dlp
 
+
+CONTENT_POS = {'名詞', '動詞', '形容詞', '形容動詞', '副詞'}
+EXCLUDE_POS_DETAIL = {'非自立', '代名詞', '数'}
+
+
 ytt_api=YouTubeTranscriptApi()
 tagger = Tagger()
 
@@ -96,16 +101,6 @@ def _deduplicate_rolling(snippets):
     
     return cleaned
 
-# raw_captions=fetch_raw_captions("vZmCtYoIRLU")
-
-
-# text = "麩菓子は、麩を主材料とした日本の菓子。"
-# tagger.parse(text)
-# # => '麩 菓子 は 、 麩 を 主材 料 と し た 日本 の 菓子 。'
-# for word in tagger(text):
-#     print(word.surface, word.feature.lemma, word.pos, sep='\t')
-#     # "feature" is the Unidic feature data as a named tuple
-
 def analyse_token(text):
     tokens = []
     node_list = tagger.parseToNodeList(text)
@@ -179,9 +174,6 @@ def normalize_captions_fragments(fragments, min_gap=0.05):
 
     return normalized
 
-CONTENT_POS = {'名詞', '動詞', '形容詞', '形容動詞', '副詞'}
-EXCLUDE_POS_DETAIL = {'非自立', '代名詞', '数'}
-
 def is_content_word(token_features):
     token_base_form=token_features.lemma if  token_features.lemma != '*' else None
     token_pos=token_features.pos1
@@ -198,6 +190,3 @@ def is_content_word(token_features):
 def process_captions(raw_captions:list[dict])->list[dict]:
     normalized_captions=normalize_captions_fragments(raw_captions)
     return tokenize_captions(normalized_captions)
-
-# print(tokenize_captions(fetch_raw_captions("j16G26S-18A"))[2])
-# print(process_captions(fetch_raw_captions("j16G26S-18A"))[1])

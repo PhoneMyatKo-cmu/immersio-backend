@@ -7,6 +7,9 @@ from cutlet import Cutlet
 from google.cloud import translate
 from pathlib import Path
 
+
+converter=Cutlet()
+
 @lru_cache(maxsize=1)
 def _load_index() -> dict:
     path = os.path.join(
@@ -111,7 +114,6 @@ def lookup_word_full(surface_form: str) -> dict:
     }
   
     
-converter=Cutlet()
 def kana_to_romanji(kana:str):
     """ 
     return romanji pronunciation reading
