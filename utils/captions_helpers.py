@@ -13,26 +13,9 @@ def fetch_raw_captions_deprecated(video_id:str):
     snippets= ytt_api.fetch(video_id,languages=("ja",)).snippets
     return [{"index":i,"text":snippet.text,"start":snippet.start,"duration":snippet.duration} for i,snippet in enumerate(snippets)]
 
-def fetch_raw_captions(video_id: str, lang: str = "ja") -> list[dict]:
-    """
-    Line-level captions matching youtube-transcript-api's output format.
-    Uses yt-dlp + json3 for resilience against IP bans.
-    """
-    # ydl_opts = {
-    #     "skip_download": True,
-    #     "quiet": True,
-    #     "no_warnings": True,
-    #     "writesubtitles": True,
-    #     "writeautomaticsub": True,
-    #     "subtitleslangs": [lang],
-    #     "subtitlesformat": "json3",
-    #     "extractor_args": {
-    #         "youtube": {
-    #             "player_client": ["web"],
-    #             "skip": ["hls", "dash", "translated_subs"],
-    #         }
-    #     },
-    # }
+def fetch_raw_captions(video_id: str, lang: str = "ja") -> dict:
+    """Sub-segments level caption fetching."""
+    
     ydl_opts = {"skip_download": True, "quiet": True, "no_warnings": True,"format":None,"extract_flat":False}
 
     url = f"https://www.youtube.com/watch?v={video_id}"
@@ -49,11 +32,15 @@ def fetch_raw_captions(video_id: str, lang: str = "ja") -> list[dict]:
         raise RuntimeError("No json3 format available")
     
     data = requests.get(json3_entry["url"]).json()
+    return data
+    
+
+def get_line_level_captions(captionData:dict):
     
     snippets = []
     index = 0
     
-    for event in data.get("events", []):
+    for event in captionData.get("events", []):
         if "segs" not in event:
             continue
         
@@ -87,6 +74,7 @@ def fetch_raw_captions(video_id: str, lang: str = "ja") -> list[dict]:
         snippet["index"] = i
     
     return snippets
+    
 
 
 def _deduplicate_rolling(snippets):

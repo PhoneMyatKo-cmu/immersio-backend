@@ -12,6 +12,7 @@ from typing import List, Optional, Tuple
 from bisect import bisect_left
 
 
+
 # =====================================================================
 # Data classes
 # =====================================================================
@@ -110,7 +111,7 @@ HARD_MAX_LEN = 70  # absolute ceiling, force a break even if not ideal
 # Step 1: Fetch and parse json3
 # =====================================================================
 
-def fetch_tokens(video_id: str, lang: str = "ja") -> List[Token]:
+def fetch_tokens_deprecated(video_id: str, lang: str = "ja") -> List[Token]:
     """
     Fetch YouTube captions in json3 format and convert to sub-segment tokens.
     Each token has audio-grounded start/end times from YouTube's ASR.
@@ -133,29 +134,11 @@ def fetch_tokens(video_id: str, lang: str = "ja") -> List[Token]:
         }
     },
                 }
-#     ydl_opts = {
-#     "skip_download": True,
-#     "quiet": True,
-#     "no_warnings": True,
-#     "writesubtitles": True,
-#     "writeautomaticsub": True,
-#     "subtitleslangs": [lang],
-#     "subtitlesformat": "json3",
-    
-#     # Critical: skip format extraction entirely
-#     "extractor_args": {
-#         "youtube": {
-#             "player_client": ["web"],
-#             "skip": ["hls", "dash", "translated_subs"],
-#         }
-#     },
-# }
     url = f"https://www.youtube.com/watch?v={video_id}"
     
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=False)
     
-    # Prefer manual subs, fall back to auto-generated ** need to change this
     subs = info.get("subtitles", {}).get(lang) or \
            info.get("automatic_captions", {}).get(lang)
     if not subs:
@@ -220,6 +203,45 @@ def _dedupe_tokens(tokens: List[Token]) -> List[Token]:
         cleaned.append(tok)
     return cleaned
 
+def process_subsegments(captionData:dict):
+     tokens = []
+     for event in captionData.get("events", []):
+        if "segs" not in event:
+            continue
+        base_ms = event.get("tStartMs", 0)
+        segs = event["segs"]
+        
+        # Filter out newline-only and empty segments
+        real_segs = [
+            (i, s) for i, s in enumerate(segs)
+            if s.get("utf8", "").strip() and s.get("utf8") != "\n"
+        ]
+        if not real_segs:
+            continue
+        
+        for idx, (_, seg) in enumerate(real_segs):
+            text = seg["utf8"]
+            offset_ms = seg.get("tOffsetMs", 0)
+            start = (base_ms + offset_ms) / 1000.0
+            
+            # End time: next segment's offset, or event's end
+            if idx + 1 < len(real_segs):
+                next_offset = real_segs[idx + 1][1].get("tOffsetMs", offset_ms + 200)
+                end = (base_ms + next_offset) / 1000.0
+            else:
+                duration_ms = event.get("dDurationMs", 300)
+                end = (base_ms + duration_ms) / 1000.0
+            
+            # Sanity: ensure positive duration
+            if end <= start:
+                end = start + 0.1
+            
+            is_last_in_event = (idx == len(real_segs) - 1)
+            tokens.append(Token(text, start, end, is_event_end=is_last_in_event))
+    
+    # Sort by start time and dedupe overlapping rolling-caption fragments
+     tokens.sort(key=lambda t: t.start)
+     return _dedupe_tokens(tokens)
 
 # =====================================================================
 # Step 2: Build text + char-level timing
@@ -700,39 +722,30 @@ def post_process(units: List[MeaningUnit]) -> List[MeaningUnit]:
 # Driver
 # =====================================================================
 
-def reconstruct(video_id: str, lang: str = "ja",
-                target_unit_len: Optional[int] = None,
-                max_unit_len: Optional[int] = None) -> List[dict]:
+def reconstruct(captionData:dict) -> List[dict]:
     """
     Main entry point. Reconstruct YouTube captions into learner-friendly meaning units.
-    
-    Args:
-        video_id: YouTube video ID
-        lang: Caption language (default: ja)
-        target_unit_len: Override TARGET_UNIT_LEN (e.g., 18 for beginners, 35 for advanced)
-        max_unit_len: Override MAX_UNIT_LEN
-    
     Returns:
         List of MeaningUnit objects with audio-grounded timestamps.
     """
     global TARGET_UNIT_LEN, MAX_UNIT_LEN
     
     # Optional per-call tuning
-    saved_target, saved_max = TARGET_UNIT_LEN, MAX_UNIT_LEN
-    if target_unit_len is not None:
-        TARGET_UNIT_LEN = target_unit_len
-    if max_unit_len is not None:
-        MAX_UNIT_LEN = max_unit_len
+    # saved_target, saved_max = TARGET_UNIT_LEN, MAX_UNIT_LEN
+    # if target_unit_len is not None:
+    #     TARGET_UNIT_LEN = target_unit_len
+    # if max_unit_len is not None:
+    #     MAX_UNIT_LEN = max_unit_len
     
-    try:
-        tokens = fetch_tokens(video_id, lang)
-        full_text, char_info = build_timeline(tokens)
-        units = segment_into_units(full_text, char_info)
-        units = snap_and_pad(units, tokens)
-        units = post_process(units)
-        return units
-    finally:
-        TARGET_UNIT_LEN, MAX_UNIT_LEN = saved_target, saved_max
+    # try:
+    tokens = process_subsegments(captionData)
+    full_text, char_info = build_timeline(tokens)
+    units = segment_into_units(full_text, char_info)
+    units = snap_and_pad(units, tokens)
+    units = post_process(units)
+    return units
+    # finally:
+        # TARGET_UNIT_LEN, MAX_UNIT_LEN = saved_target, saved_max
 
 def to_dict(unit: MeaningUnit, sentence_index: int) -> dict:
     return {
@@ -743,9 +756,9 @@ def to_dict(unit: MeaningUnit, sentence_index: int) -> dict:
         "sentence_index": sentence_index,
     }
     
-def reconstruct_sentence_for_auto_generate(video_id: str, lang: str = "ja", **kwargs) -> List[dict]:
+def reconstruct_sentence_for_auto_generate(captionData:dict) -> List[dict]:
     """Public API: returns list of dicts in the application's expected format."""
-    units = reconstruct(video_id, lang, **kwargs)
+    units = reconstruct(captionData)
     return [to_dict(u, idx) for idx, u in enumerate(units)]
 
 def reconstruct_sentence_for_manual(captions:list[dict])-> List[dict]:

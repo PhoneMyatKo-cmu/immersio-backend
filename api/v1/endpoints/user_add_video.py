@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from db.base import get_db
 from services.caption_services import save_tokenized_captions
 from services.vocab_services import save_vocabularies
-from utils.captions_helpers import fetch_raw_captions,tokenize_captions,process_captions
+from utils.captions_helpers import fetch_raw_captions,tokenize_captions,process_captions,get_line_level_captions
 from utils.sentence_reconstruction import reconstruct_sentence_for_auto_generate,reconstruct_sentence_for_manual
 from services.context_sentence_services import save_context_sentence
 
@@ -50,7 +50,8 @@ def add_video(data:VideoUrl,
     except Exception  as e:
         print(e)
         raise HTTPException(500,"Server Error")
-    processed_captions=process_captions(raw_captions)
+    line_level_captions=get_line_level_captions(raw_captions)
+    processed_captions=process_captions(line_level_captions)
     caption_len=0
     flattened_token=[t["surface"] for caption in processed_captions for t in caption["tokens"]]
     
@@ -67,7 +68,7 @@ def add_video(data:VideoUrl,
 
     else:
         
-        context_sentences=reconstruct_sentence_for_auto_generate(youtube_video_id)
+        context_sentences=reconstruct_sentence_for_auto_generate(raw_captions)
     
     
     try:
