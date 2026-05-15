@@ -43,5 +43,5 @@ class Sentence(Base):
     # Relationship (optional but recommended)
     video = relationship(
         "Video",
-        backref="sentences"
+        back_populates="sentences"
     )

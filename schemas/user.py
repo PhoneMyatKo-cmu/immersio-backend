@@ -1,24 +1,68 @@
-from pydantic import BaseModel, EmailStr
-from models.user import EstimatedLevel
 from datetime import datetime
 
-class UserBase(BaseModel):
-    id: str
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+
+from models.user import EstimatedLevel
+
+
+class UserCreate(BaseModel):
+    first_name: str = Field(min_length=1, max_length=100)
+    last_name: str = Field(min_length=1, max_length=100)
+    email: EmailStr
+    password: str = Field(min_length=8, max_length=128)
+    estimated_level: EstimatedLevel = EstimatedLevel.beginner
+
+    @field_validator("password")
+    @classmethod
+    def password_must_fit_bcrypt(cls, value: str) -> str:
+        if len(value.encode("utf-8")) > 72:
+            raise ValueError("Password must be 72 bytes or fewer")
+        return value
+
+
+class UserLogin(BaseModel):
+    email: EmailStr
+    password: str = Field(min_length=1, max_length=128)
+
+    @field_validator("password")
+    @classmethod
+    def password_must_fit_bcrypt(cls, value: str) -> str:
+        if len(value.encode("utf-8")) > 72:
+            raise ValueError("Password must be 72 bytes or fewer")
+        return value
+
+
+class UserRead(BaseModel):
+    id: int
     first_name: str
     last_name: str
     email: EmailStr
-
-class UserCreate(BaseModel):
-    password_hash: str
     estimated_level: EstimatedLevel
     created_at: datetime
 
-class UserUpdate(BaseModel):
-    first_name: str | None = None
-    last_name: str | None = None
-    email: EmailStr | None = None
-    password_hash: str | None = None
-    estimated_level: EstimatedLevel | None = None
+    model_config = ConfigDict(from_attributes=True)
 
-class User(BaseModel):
-    pass
+
+class Token(BaseModel):
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"
+
+
+class TokenPayload(BaseModel):
+    sub: str
+    type: str
+    exp: datetime
+    jti: str | None = None
+
+
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str = Field(min_length=1)
+
+
+class LogoutRequest(BaseModel):
+    refresh_token: str | None = Field(default=None, min_length=1)
+
+
+class Message(BaseModel):
+    detail: str
