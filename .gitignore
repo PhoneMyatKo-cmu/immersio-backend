@@ -35,6 +35,7 @@ Thumbs.db
 # custom
 services/romaji_test.py
 utils/data/jmdict-eng-3.6.2.json
+utils/test*.py
+utils/sentence_reconstruction_helpers.py
+downloads/*
 gct_key.json
-utils/test*
-downloads/
