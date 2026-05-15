@@ -1,4 +1,5 @@
-from sqlalchemy import String, Enum, ARRAY
+from sqlalchemy import String, Enum, ARRAY,INTEGER
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 import enum
 
@@ -15,9 +16,10 @@ class EstimatedLevel(str, enum.Enum):
 class Vocabulary(Base):
     __tablename__ = "vocabulary"
 
-    id: Mapped[str] = mapped_column(
-        String(50),
-        primary_key=True
+    id: Mapped[int] = mapped_column(
+        INTEGER,
+        primary_key=True,
+        autoincrement=True
     )
 
     japanese_form: Mapped[str] = mapped_column(
@@ -26,24 +28,22 @@ class Vocabulary(Base):
         nullable=False
     )
 
-    # list of meanings (JSON array)
-    meaning: Mapped[list[str]] = mapped_column(
-        ARRAY(String),
-        nullable=False
-    )
-
     reading: Mapped[str] = mapped_column(
         String(255),
         nullable=False
     )
 
-    part_of_speech: Mapped[str] = mapped_column(
-        String(100),
-        nullable=False
+    meanings: Mapped[dict] = mapped_column(
+        JSONB,
+        nullable=False,
+        default=list
     )
+    
 
     estimated_level: Mapped[EstimatedLevel] = mapped_column(
         Enum(EstimatedLevel, name="vocab_level_enum"),
         nullable=False,
         default=EstimatedLevel.unknown
     )
+    
+    

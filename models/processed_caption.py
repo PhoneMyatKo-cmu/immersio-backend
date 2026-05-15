@@ -1,10 +1,10 @@
 from sqlalchemy import Integer, Float, ForeignKey
-from sqlalchemy.dialects.postgresql import ARRAY, TEXT
+from sqlalchemy.dialects.postgresql import ARRAY, TEXT,JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from db.base import Base
 
-
+    
 class ProcessedCaption(Base):
     __tablename__ = "processed_captions"
 
@@ -23,7 +23,7 @@ class ProcessedCaption(Base):
 
     # tokenized words for NLP / shadowing
     tokens: Mapped[list[str]] = mapped_column(
-        ARRAY(TEXT),
+        JSONB,
         nullable=False
     )
 
