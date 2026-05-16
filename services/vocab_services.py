@@ -30,4 +30,11 @@ def check_duplicate(japanese_form:str,db:Session):
     result=db.scalars(select(Vocabulary).where(Vocabulary.japanese_form==japanese_form)).first()
     
     return result is not None
-        
+ 
+ 
+ 
+def get_vocab_by_surface_form(surface_form:str,db:Session)->Vocabulary | None:
+    
+    result=db.scalars(select(Vocabulary).where(Vocabulary.japanese_form==surface_form)).first()
+    
+    return result      
