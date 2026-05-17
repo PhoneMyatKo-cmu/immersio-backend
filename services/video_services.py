@@ -52,3 +52,11 @@ def get_video_by_youtube_video_id(youtube_video_id:str,db:Session):
 
     row = db.execute(stmt).scalars().first()
     return row
+
+def get_video_by_id(id:int,db:Session):
+    stmt = select(Video).where(
+    Video.id == id
+)
+
+    row = db.execute(stmt).scalars().first()
+    return row
