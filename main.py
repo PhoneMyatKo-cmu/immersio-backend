@@ -8,7 +8,8 @@ from models.sentence import Sentence
 from models.processed_caption import ProcessedCaption
 from models.user_vocab_library import UserVocabLibrary
 from models.user_vocab_profile import UserVocabProfile
-from api.v1.endpoints import user_add_video,vocab,caption,TempVideo
+from models.ai_explanation_cache import AI_Explanation_Cache
+from api.v1.endpoints import user_add_video,vocab,caption,TempVideo,gemini_explanation
 
 app = FastAPI()
 
@@ -37,3 +38,4 @@ app.include_router(user_add_video.router)
 app.include_router(vocab.router)
 app.include_router(caption.router)
 app.include_router(TempVideo.router)
+app.include_router(gemini_explanation.router)
