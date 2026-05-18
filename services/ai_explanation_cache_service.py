@@ -1,7 +1,17 @@
-from sqlalchemy.orm import Session
 from sqlalchemy import select
+from sqlalchemy.orm import Session
+
 from models.ai_explanation_cache import AI_Explanation_Cache
-from utils.request_gemini import WordExplanationResponse
+from schemas.vocab_context import (
+    ContextRequest,
+    ContextResponse,
+    WordExplanationResponse,
+)
+from services.gemini_api_service import get_context_explanation_from_gemini
+
+
+class ServiceUnavailableError(Exception):
+    pass
 
 
 def check_cache(vocab_id: int, sentence_id: int, db: Session):
@@ -52,3 +62,52 @@ def cache_explanation(
     db.add(saved_explanation)
     db.commit()
     return saved_explanation
+
+
+def get_context_explanation_from_ai(contextRequest: ContextRequest, db: Session):
+    cached_explanation = check_cache(
+        contextRequest.vocab_id, contextRequest.sentence_id, db
+    )
+
+    if cached_explanation:
+        print("Cache hit")
+        return ContextResponse(
+            explanation=cached_explanation.explanation,
+            examples=cached_explanation.examples,
+            confidence=cached_explanation.confidence_level,
+            dictionary_mismatche_detected=cached_explanation.dictionary_mismatch_detected,
+        )
+
+    print("Cache missed")
+
+    try:
+        explanation = get_context_explanation_from_gemini(
+            surface_form=contextRequest.surface_form,
+            pos=contextRequest.pos,
+            meanings=contextRequest.meanings,
+            context_sentence=contextRequest.context_sentence,
+        )
+
+    except Exception as e:
+        print(f"GEMINI ERROR{e}")
+        raise ServiceUnavailableError(
+            "Service is currently not available. Please try again in a moment."
+        )
+
+    try:
+        cache_explanation(
+            vocab_id=contextRequest.vocab_id,
+            sentence_id=contextRequest.sentence_id,
+            word_explanation=explanation,
+            db=db,
+        )
+    except Exception as e:
+        print(f"DATABASE ERROR:{e}")
+        raise e
+
+    return ContextResponse(
+        explanation=explanation.explanation,
+        examples=[ex.model_dump() for ex in explanation.examples],
+        confidence=explanation.confidence,
+        dictionary_mismatche_detected=explanation.dictionary_mismatch_detected,
+    )
