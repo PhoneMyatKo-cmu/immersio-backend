@@ -1,9 +1,42 @@
+from typing import Literal
+import os
+from dotenv import load_dotenv
+from google import genai
+from google.genai import types
+from pydantic import BaseModel, Field
+
+load_dotenv()
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+client = genai.Client()
+
+
+class ExampleSentence(BaseModel):
+    japanese: str = Field(description="The natural Japanese example sentence.")
+    reading: str = Field(
+        description="The pronunciation reading of the sentence in Hiragana/Katakana (no Kanji)."
+    )
+    english: str = Field(description="The English translation of the example sentence.")
+
+
+class WordExplanationResponse(BaseModel):
+    explanation: str = Field(
+        description="2-3 sentences explaining how the word is used specifically in the context sentence, focusing on nuance and register."
+    )
+    examples: list[ExampleSentence] = Field(
+        description="Exactly 2 natural example sentences using the word in different contexts."
+    )
+    confidence: Literal["high", "medium", "low"] = Field(
+        description="Confidence level. Use 'high' if dictionary matches context, 'medium' if inferred from context, 'low' if tokenization looks incorrect."
+    )
+    dictionary_mismatch_detected: bool = Field(
+        description="True if the provided dictionary meanings did not fit the context sentence, forcing a contextual definition override."
+    )
 
 
 def build_explanation_prompt(
-    surface_form:  str,
-    pos:           list[str],
-    meanings:      list[str],
+    surface_form: str,
+    pos: list[str],
+    meanings: list[str],
     context_sentence: str,
 ) -> str:
     """
@@ -15,7 +48,7 @@ def build_explanation_prompt(
     """
 
     meanings_text = " / ".join(meanings) if meanings else "unknown"
-    pos_text      = ", ".join(pos)       if pos      else "unknown"
+    pos_text = ", ".join(pos) if pos else "unknown"
 
     return f"""You are a Japanese language teacher helping a learner understand a word in context.
 
@@ -39,36 +72,26 @@ def build_explanation_prompt(
                 4. Generate exactly 2 distinct, natural Japanese example sentences demonstrating how to use "{surface_form}" in other situations.
             """
 
-# RESPOND IN THIS EXACT JSON FORMAT:
-# {{
-#     "explanation": "explanation text here",
-#     "examples": [
-#         {{
-#             "japanese": "first example sentence in Japanese",
-#             "english":  "English translation"
-#         }},
-#         {{
-#             "japanese": "second example sentence in Japanese",
-#             "english":  "English translation"
-#         }}
-#     ],
-#     "confidence": "high | medium | low"
-# }}
 
-# Return ONLY the JSON. No markdown, no explanation outside the JSON."""
+def get_context_explanation_from_ai(
+    surface_form: str, pos: list, meanings: list, context_sentence: str
+) -> WordExplanationResponse:
+    prompt_text = build_explanation_prompt(
+        surface_form=surface_form,
+        pos=pos,
+        meanings=meanings,
+        context_sentence=context_sentence,
+    )
 
+    response = client.models.generate_content(
+        model="gemini-3-flash-preview",
+        contents=prompt_text,
+        config=types.GenerateContentConfig(
+            # Enforces JSON output matching your schema structure
+            response_mime_type="application/json",
+            response_schema=WordExplanationResponse,
+            temperature=0.2,  # Low temperature ensures stricter instruction following
+        ),
+    )
 
-# from google import genai
-# from google.genai import types
-
-# client = genai.Client(api_key=GEMINI_API_KEY)
-
-# response = client.models.generate_content(
-#     model="gemini-3-flash-preview",
-#     config=types.GenerateContentConfig(
-#         system_instruction="You are a cat. Your name is Neko."),
-#     contents="Hello there",
-    
-# )
-
-# print(response.text)
+    return response.parsed
