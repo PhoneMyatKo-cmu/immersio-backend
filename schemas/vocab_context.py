@@ -40,3 +40,16 @@ class WordExplanationResponse(BaseModel):
     dictionary_mismatch_detected: bool = Field(
         description="True if the provided dictionary meanings did not fit the context sentence, forcing a contextual definition override."
     )
+
+
+class VocabRequest(BaseModel):
+    vocab_surface_form: str
+    video_id: int
+    timestamp: float
+
+
+class VocabResponse(BaseModel):
+    surface_form: str
+    pronunciation: str
+    meanings: list[dict]
+    context_sentence: dict | None
