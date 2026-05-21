@@ -8,10 +8,12 @@ from models.sentence import Sentence
 from models.processed_caption import ProcessedCaption
 from models.user_vocab_library import UserVocabLibrary
 from models.user_vocab_profile import UserVocabProfile
+from api.v1.endpoints.users import router as user_router
 from api.v1.endpoints import user_add_video
 
 app = FastAPI()
 
+app.include_router(user_router)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
