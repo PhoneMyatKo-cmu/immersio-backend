@@ -52,3 +52,21 @@ def get_video_by_youtube_video_id(youtube_video_id:str,db:Session):
 
     row = db.execute(stmt).scalars().first()
     return row
+
+def get_videos_by_difficulty_level(difficulty_level:str,db:Session):
+    stmt = select(Video).where(
+    Video.difficulty_level == difficulty_level
+    ).order_by(
+        Video.created_at.desc()
+    ).limit(10)
+
+    rows = db.execute(stmt).scalars().all()
+    return rows
+
+def get_all_videos(db:Session):
+    stmt = select(Video).order_by(
+        Video.created_at.desc()
+    )
+
+    rows = db.execute(stmt).scalars().all()
+    return rows
