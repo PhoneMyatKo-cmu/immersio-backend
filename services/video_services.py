@@ -63,10 +63,13 @@ def get_videos_by_difficulty_level(difficulty_level:str,db:Session):
     rows = db.execute(stmt).scalars().all()
     return rows
 
-def get_all_videos(db:Session):
+def get_videos(db:Session, search: str = None):
     stmt = select(Video).order_by(
         Video.created_at.desc()
     )
+    
+    if search:
+        stmt = stmt.where(Video.title.ilike(f"%{search}%"))
 
     rows = db.execute(stmt).scalars().all()
     return rows

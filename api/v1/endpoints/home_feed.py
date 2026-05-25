@@ -1,13 +1,14 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from db.base import get_db
-from services.video_services import get_all_videos, get_videos_by_difficulty_level
+from services.video_services import get_videos, get_videos_by_difficulty_level
 
 router = APIRouter(prefix="/feed")
 
 @router.get("/")
-def get_home_feed(db: Session = Depends(get_db)):
-    videos = get_all_videos(db)
+def get_home_feed(db: Session = Depends(get_db),
+                  search: str = None):
+    videos = get_videos(db, search=search.lower() if search else None)
     return videos
 
 @router.get("/difficulty/{difficulty_level}")
