@@ -49,6 +49,7 @@ class VocabRequest(BaseModel):
 
 
 class VocabResponse(BaseModel):
+    vocab_id: int
     surface_form: str
     pronunciation: str
     meanings: list[dict]

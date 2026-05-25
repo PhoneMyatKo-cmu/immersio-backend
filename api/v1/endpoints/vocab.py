@@ -9,7 +9,7 @@ from services.vocab_services import get_vocab_by_surface_form
 router = APIRouter(prefix="/get-vocab")
 
 
-@router.get("/")
+@router.post("/")
 def get_vocabulary(
     vocabRequest: VocabRequest, db: Session = Depends(get_db)
 ) -> VocabResponse:
@@ -32,6 +32,7 @@ def get_vocabulary(
     )
 
     return VocabResponse(
+        vocab_id=vocab.id,
         surface_form=vocab.japanese_form,
         pronunciation=vocab.reading,
         meanings=vocab.meanings,

@@ -11,7 +11,7 @@ from services.ai_explanation_cache_service import (
 router = APIRouter(prefix="/context-explanation")
 
 
-@router.get("/")
+@router.post("/")
 def get_ai_explanation(
     contextRequest: ContextRequest, db: Session = Depends(get_db)
 ) -> ContextResponse:
