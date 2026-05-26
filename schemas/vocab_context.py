@@ -54,3 +54,4 @@ class VocabResponse(BaseModel):
     pronunciation: str
     meanings: list[dict]
     context_sentence: dict | None
+    sentence_translation: str

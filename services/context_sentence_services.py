@@ -1,9 +1,10 @@
 from typing import Optional
 
-from sqlalchemy import func
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from models.sentence import Sentence
+from services.google_translate_service import fall_back_google_translate
 
 
 def save_context_sentence(sentences: list, video_db_id: int, db: Session):
@@ -69,7 +70,35 @@ def find_context_sentence(
     return {
         "id": best.id,
         "text": best.text,
+        "translation": best.translation,
         "start": best.start_time,
         "end": best.end_time,
         "sentence_index": best.sentence_index,
     }
+
+
+def cache_translation(sentence_id: int, translation: str, db: Session):
+    sentence = db.scalars(select(Sentence).where(Sentence.id == sentence_id)).first()
+    sentence.translation = translation
+    db.add(sentence)
+    db.commit()
+
+
+def get_sentence_translation(context_sentence: dict, db: Session) -> str:
+
+    if context_sentence["translation"]:
+        print("Translation cache")
+        return context_sentence["translation"]
+
+    else:
+        try:
+            print("Translation cache miss")
+            context_sentence_translation = fall_back_google_translate(
+                context_sentence["text"]
+            )[0]
+            cache_translation(context_sentence["id"], context_sentence_translation, db)
+            return context_sentence_translation
+
+        except Exception as e:
+            print(e)
+            return "Translation service currently unavailable!"
