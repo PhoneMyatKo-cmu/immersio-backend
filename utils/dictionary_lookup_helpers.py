@@ -78,8 +78,9 @@ def extract_group_meanings(senses: list[dict], max_pos=3, max_gloss_per_pos=3):
     return results
 
 
-def lookup_word_full(surface_form: str) -> dict:
-
+def lookup_word_full(token: tuple) -> dict:
+    surface_form = token[0]
+    base_form = token[1]
     if not is_japanese(surface_form):
         return {
             "meanings": [{"pos": None, "meanings": None}],
@@ -87,19 +88,30 @@ def lookup_word_full(surface_form: str) -> dict:
             "found": False,
         }
     index = _load_index()
-    entry = index.get(surface_form)
-
     meanings = []
     reading = surface_form
-    if entry:
-        senses = entry.get("sense", [])
+
+    surface_form_entry = index.get(surface_form)
+    if surface_form_entry:
+        print("Surface Form Found!")
+        senses = surface_form_entry.get("sense", [])
         meanings = extract_group_meanings(senses)
-        kana_forms = entry.get("kana", [])
+        kana_forms = surface_form_entry.get("kana", [])
         if kana_forms:
             reading = kana_forms[0]["text"]
+    else:
+        print(f"Base Form Trying..{base_form}")
+        base_form_entry = index.get(base_form)
+        print(f"Base:{base_form_entry}")
+        if base_form_entry:
+            senses = base_form_entry.get("sense", [])
+            meanings = extract_group_meanings(senses)
+            kana_forms = base_form_entry.get("kana", [])
+            if kana_forms:
+                reading = kana_forms[0]["text"]
 
     if not meanings or not any(m["meanings"] for m in meanings):
-        print("No meaning")
+        print("No meaning! GCT trying..")
         meanings = [
             {
                 "pos": "web_translate",

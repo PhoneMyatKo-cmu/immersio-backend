@@ -39,3 +39,5 @@ utils/test*.py
 utils/sentence_reconstruction_helpers.py
 downloads/*
 gct_key.json
+audio.mp3
+test_faster_whisper.ipynb
