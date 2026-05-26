@@ -1,5 +1,5 @@
 from sqlalchemy import text
-from models.video import Video
+from models.video import DifficultyLevel, Video
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 import isodate
@@ -53,7 +53,7 @@ def get_video_by_youtube_video_id(youtube_video_id:str,db:Session):
     row = db.execute(stmt).scalars().first()
     return row
 
-def get_videos_by_difficulty_level(difficulty_level:str,db:Session):
+def get_videos_by_difficulty_level(difficulty_level: DifficultyLevel,db:Session):
     stmt = select(Video).where(
     Video.difficulty_level == difficulty_level
     ).order_by(
