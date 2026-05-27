@@ -82,4 +82,4 @@ def check_duplicate_vocab_per_user(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthenticated"
         )
 
-    return {"saved": check_duplicate_vocab(vocab_id, current_user.id, db) is not None}
+    return {"saved": check_duplicate_vocab(current_user.id, vocab_id, db) is not None}
