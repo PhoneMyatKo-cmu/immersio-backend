@@ -1,12 +1,15 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+from core.auth import get_current_user
 from db.base import get_db
-from schemas.vocab_context import VocabRequest, VocabResponse
+from schemas.user import UserRead
+from schemas.vocab_context import UserVocabSave, VocabRequest, VocabResponse
 from services.context_sentence_services import (
     find_context_sentence,
     get_sentence_translation,
 )
+from services.user_vocab_service import check_duplicate_vocab, save_vocab_to_library
 from services.vocab_services import get_vocab_by_surface_form
 
 router = APIRouter(prefix="/get-vocab")
@@ -47,9 +50,36 @@ def get_vocabulary(
 
 
 @router.post("/save")
-def save_vocab_for_user():
-    pass
+def save_vocab_for_user(
+    saveVocab: UserVocabSave,
+    db: Session = Depends(get_db),
+    current_user: UserRead = Depends(get_current_user),
+):
+    if not current_user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthenticated"
+        )
+
+    user_id = current_user.id
+    try:
+        save_vocab_to_library(saveVocab, user_id, db)
+    except Exception:
+        HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Try again later!"
+        )
+
+    return {"message": "success"}
 
 
-def temp_get_user_id():
-    return 1
+@router.get("/check-duplicate")
+def check_duplicate_vocab_per_user(
+    vocab_id: int,
+    db: Session = Depends(get_db),
+    current_user: UserRead = Depends(get_current_user),
+):
+    if not current_user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthenticated"
+        )
+
+    return {"saved": check_duplicate_vocab(vocab_id, current_user.id, db) is not None}

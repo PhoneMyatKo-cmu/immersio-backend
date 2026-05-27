@@ -1,7 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+from core.auth import get_current_user
 from db.base import get_db
+from schemas.user import UserRead
 from schemas.vocab_context import ContextRequest, ContextResponse
 from services.ai_explanation_cache_service import (
     ServiceUnavailableError,
@@ -13,8 +15,14 @@ router = APIRouter(prefix="/context-explanation")
 
 @router.post("/")
 def get_ai_explanation(
-    contextRequest: ContextRequest, db: Session = Depends(get_db)
+    contextRequest: ContextRequest,
+    db: Session = Depends(get_db),
+    current_user: UserRead = Depends(get_current_user),
 ) -> ContextResponse:
+    if not current_user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthenticated"
+        )
 
     try:
         explanation = get_context_explanation_from_ai(contextRequest, db)

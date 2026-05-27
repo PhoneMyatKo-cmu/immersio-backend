@@ -55,3 +55,10 @@ class VocabResponse(BaseModel):
     meanings: list[dict]
     context_sentence: dict | None
     sentence_translation: str
+
+
+class UserVocabSave(BaseModel):
+    vocab_id: int
+    video_id: int
+    sentence_id: int
+    timestamp: float
