@@ -9,7 +9,7 @@ from models.processed_caption import ProcessedCaption
 from models.user_vocab_library import UserVocabLibrary
 from models.user_vocab_profile import UserVocabProfile
 from api.v1.endpoints.users import router as user_router
-from api.v1.endpoints import user_add_video
+from api.v1.endpoints import user_add_video, home_feed
 
 app = FastAPI()
 
@@ -36,3 +36,4 @@ def root():
 
 
 app.include_router(user_add_video.router)
+app.include_router(home_feed.router)

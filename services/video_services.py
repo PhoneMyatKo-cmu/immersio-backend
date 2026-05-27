@@ -1,5 +1,5 @@
-from sqlalchemy import text
-from models.video import Video
+from sqlalchemy import func, text
+from models.video import DifficultyLevel, Video
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 import isodate
@@ -52,3 +52,34 @@ def get_video_by_youtube_video_id(youtube_video_id:str,db:Session):
 
     row = db.execute(stmt).scalars().first()
     return row
+
+def get_videos_by_difficulty_level(difficulty_level: DifficultyLevel,db:Session, search: str, page: int, page_size: int):
+    stmt = select(Video).where(
+    Video.difficulty_level == difficulty_level
+    ).order_by(
+        Video.created_at.desc()
+    )
+
+    if search:
+        stmt = stmt.where(Video.title.ilike(f"%{search}%"))
+
+    rows = db.execute(stmt.limit(page_size).offset((page - 1) * page_size)).scalars().all()
+    
+    total_videos = get_total_video_count(db, stmt)
+    return rows, total_videos
+
+def get_videos(db:Session, search: str = None, page: int = 1, page_size: int = 6):
+    stmt = select(Video).order_by(
+        Video.created_at.desc()
+    )
+    
+    if search:
+        stmt = stmt.where(Video.title.ilike(f"%{search}%"))
+
+    rows = db.execute(stmt.limit(page_size).offset((page - 1) * page_size)).scalars().all()
+    total_videos = get_total_video_count(db, stmt)
+    return rows, total_videos
+
+def get_total_video_count(db:Session, stmt:select):
+    total_videos = db.scalar(select(func.count()).select_from(stmt.subquery()))
+    return total_videos
