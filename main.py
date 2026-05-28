@@ -11,7 +11,7 @@ from models.user import User
 from models.user_vocab_library import UserVocabLibrary
 from models.user_vocab_profile import UserVocabProfile
 from models.video import Video
-from models.vocab import Vocabulary
+from models.vocab import Vocabulary, home_feed
 
 app = FastAPI()
 
@@ -43,3 +43,5 @@ app.include_router(vocab.router)
 app.include_router(caption.router)
 app.include_router(TempVideo.router)
 app.include_router(ai_explanation.router)
+
+app.include_router(home_feed.router)
