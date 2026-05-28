@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 from db.base import get_db
 from models.processed_caption import ProcessedCaption
+from sqlalchemy import select
 
 def save_tokenized_captions(tokenized_captions:list[dict],video_id:int,db:Session):
     try:
@@ -22,4 +23,16 @@ def save_tokenized_captions(tokenized_captions:list[dict],video_id:int,db:Sessio
         raise e
     
     return len(tokenized_captions)
-    
+
+
+def get_captions_by_video_id(video_id:int,db:Session):
+    captions=[]
+    try:
+        stmt=select(ProcessedCaption).where(
+            ProcessedCaption.video_id==video_id
+        )
+        captions=db.execute(stmt).scalars().all()
+    except Exception as e:
+        print("DB error")
+        raise e
+    return captions
