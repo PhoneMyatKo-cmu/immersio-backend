@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
@@ -10,6 +10,10 @@ from services.video_services import (
     check_video_exists,
     get_video_by_youtube_video_id,
     save_video,
+)
+from services.video_vocab_service import (
+    save_video_vocab_profile,
+    save_video_vocab_profile_background,
 )
 from services.vocab_services import save_vocabularies
 from utils.captions_helpers import (
@@ -38,7 +42,9 @@ class SubmissionResponse(BaseModel):
 
 
 @router.post("/")
-def add_video(data: VideoUrl, db: Session = Depends(get_db)) -> SubmissionResponse:
+def add_video(
+    data: VideoUrl, background_tasks: BackgroundTasks, db: Session = Depends(get_db)
+) -> SubmissionResponse:
 
     validation_result = validate_video(data.youtube_url)
     if not validation_result["valid"]:
@@ -75,6 +81,7 @@ def add_video(data: VideoUrl, db: Session = Depends(get_db)) -> SubmissionRespon
         for caption in processed_captions
         for t in caption["tokens"]
     ]
+    surface_form_list = [token[0] for token in flattened_token]
 
     available_caption = validation_result["suitablity"]["available_captions"]
     print(f"Available captions:{available_caption}")
@@ -105,6 +112,12 @@ def add_video(data: VideoUrl, db: Session = Depends(get_db)) -> SubmissionRespon
         save_vocabularies(flattened_token, db)
 
         saved_sentences = save_context_sentence(context_sentences, saved_video_id, db)
+
+        background_tasks.add_task(
+            save_video_vocab_profile_background,
+            saved_video_id,
+            surface_form_list,
+        )
 
     except Exception as e:
         print(f"Db error:{e}")
