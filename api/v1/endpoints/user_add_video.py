@@ -1,26 +1,21 @@
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
 from db.base import get_db
 from services.caption_services import save_tokenized_captions
 from services.context_sentence_services import save_context_sentence
+from services.video_background_service import process_video_vocab_background
 from services.video_services import (
     check_video_exists,
     get_video_by_youtube_video_id,
     save_video,
-)
-from services.video_vocab_service import (
-    save_video_vocab_profile,
-    save_video_vocab_profile_background,
 )
 from services.vocab_services import save_vocabularies
 from utils.captions_helpers import (
     fetch_raw_captions,
     get_line_level_captions,
     process_captions,
-    tokenize_captions,
 )
 from utils.sentence_reconstruction import (
     reconstruct_sentence_for_auto_generate,
@@ -114,7 +109,7 @@ def add_video(
         saved_sentences = save_context_sentence(context_sentences, saved_video_id, db)
 
         background_tasks.add_task(
-            save_video_vocab_profile_background,
+            process_video_vocab_background,
             saved_video_id,
             surface_form_list,
         )

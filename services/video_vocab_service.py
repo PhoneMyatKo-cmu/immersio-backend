@@ -1,9 +1,8 @@
 import logging
 
-from sqlalchemy import select, update
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from db.base import SessionLocal
 from models.video_vocab_profile import VideoVocabProfile
 from models.vocab import Vocabulary
 
@@ -54,38 +53,22 @@ def save_video_vocab_profile(
     db.commit()
 
 
-def save_video_vocab_profile_background(
-    video_id: int, surface_forms: list[str]
-) -> None:
-    db = SessionLocal()
-    logger.info(
-        "Starting video vocab profile background task",
-        extra={
-            "video_id": video_id,
-            "surface_form_count": len(surface_forms),
-        },
-    )
-    try:
-        save_video_vocab_profile(
-            video_id=video_id,
-            surface_forms=surface_forms,
-            db=db,
+def get_video_vocab_with_tiers(video_id: int, db: Session) -> list[dict]:
+    rows = db.execute(
+        select(
+            Vocabulary.japanese_form,
+            Vocabulary.estimated_level,
+            VideoVocabProfile.frequency,
         )
-        logger.info(
-            "Finished video vocab profile background task",
-            extra={
-                "video_id": video_id,
-                "surface_form_count": len(surface_forms),
-            },
-        )
-    except Exception as e:
-        db.rollback()
-        logger.exception(
-            "Failed video vocab profile background task",
-            extra={
-                "video_id": video_id,
-                "surface_form_count": len(surface_forms),
-            },
-        )
-    finally:
-        db.close()
+        .join(VideoVocabProfile, VideoVocabProfile.vocab_id == Vocabulary.id)
+        .where(VideoVocabProfile.video_id == video_id)
+    ).all()
+
+    return [
+        {
+            "base_form": row.japanese_form,
+            "jlpt_tier": row.estimated_level.value,
+            "frequency": row.frequency,
+        }
+        for row in rows
+    ]
