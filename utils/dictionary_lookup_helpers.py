@@ -19,11 +19,11 @@ LEMMA_NORMALIZE = {
     "無い": "ない",
 }
 
-converter = Cutlet()
+converter = Cutlet(use_foreign_spelling=False)
 
 
 @lru_cache(maxsize=1)
-def _load_index() -> tuple[dict, dict]:
+def _load_index_deprecated() -> tuple[dict, dict]:
     path = os.path.join(
         os.path.dirname(__file__), "data", "jmdictExtended-2026-05-26.json"
     )
@@ -53,6 +53,47 @@ def _load_index() -> tuple[dict, dict]:
                 jlpt_index[k["text"]] = tier
             for k in word.get("kana", []):
                 jlpt_index[k["text"]] = tier
+
+    return index, jlpt_index
+
+
+@lru_cache(maxsize=1)
+def _load_index() -> tuple[dict, dict]:
+    path = os.path.join(
+        os.path.dirname(__file__), "data", "jmdictExtended-2026-05-26.json"
+    )
+    with open(path, "r", encoding="utf-8-sig") as f:
+        data = json.load(f)
+
+    index: dict[str, dict] = {}
+    key_is_common: dict[str, bool] = {}  # build-time helper only
+
+    for word in data["words"]:
+        for form in word.get("kanji", []) + word.get("kana", []):
+            text = form["text"]
+            common = bool(form.get("common"))  # is THIS spelling/reading common?
+            if text not in index:
+                index[text] = word
+                key_is_common[text] = common
+            elif common and not key_is_common[text]:
+                index[text] = word  # upgrade: common beats a stored non-common entry
+                key_is_common[text] = True
+            # else: keep it — first common wins, otherwise first-seen wins
+
+    # JLPT tier tied to the selected entry (prefer the matched form's level)
+    jlpt_index: dict[str, str] = {}
+    for text, word in index.items():
+        forms = word.get("kanji", []) + word.get("kana", [])
+        level = next(
+            (
+                f.get("jlptLevel")
+                for f in forms
+                if f["text"] == text and f.get("jlptLevel")
+            ),
+            None,
+        ) or next((f.get("jlptLevel") for f in forms if f.get("jlptLevel")), None)
+        if level:
+            jlpt_index[text] = f"N{level}"
 
     return index, jlpt_index
 
