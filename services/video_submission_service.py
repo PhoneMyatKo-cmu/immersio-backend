@@ -12,8 +12,8 @@ from services.video_services import (
 )
 from services.video_validation_service import validate_video
 from services.vocab_services import save_vocabularies
+from services.youtube_api_service import fetch_raw_captions
 from utils.captions_helpers import (
-    fetch_raw_captions,
     get_line_level_captions,
     process_captions,
 )

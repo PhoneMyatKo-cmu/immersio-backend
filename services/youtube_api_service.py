@@ -1,6 +1,8 @@
 import os
 
 import httpx
+import requests
+import yt_dlp
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -74,3 +76,32 @@ def fetch_caption_tracks(video_id: str) -> list[dict]:
 
     data = response.json()
     return data.get("items", [])
+
+
+def fetch_raw_captions(video_id: str, lang: str = "ja") -> dict:
+    """Sub-segments level caption fetching."""
+
+    ydl_opts = {
+        "skip_download": True,
+        "quiet": True,
+        "no_warnings": True,
+        "format": None,
+        "extract_flat": False,
+    }
+
+    url = f"https://www.youtube.com/watch?v={video_id}"
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        info = ydl.extract_info(url, download=False)
+
+    subs = info.get("subtitles", {}).get(lang) or info.get(
+        "automatic_captions", {}
+    ).get(lang)
+    if not subs:
+        raise RuntimeError(f"No {lang} captions available for {video_id}")
+
+    json3_entry = next((s for s in subs if s["ext"] == "json3"), None)
+    if not json3_entry:
+        raise RuntimeError("No json3 format available")
+
+    data = requests.get(json3_entry["url"]).json()
+    return data

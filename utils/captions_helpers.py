@@ -2,10 +2,7 @@ import html
 import re
 from copy import deepcopy
 
-import requests
-import yt_dlp
 from fugashi import Tagger
-from youtube_transcript_api import YouTubeTranscriptApi
 
 CONTENT_POS = {"名詞", "動詞", "形容詞", "形状詞", "副詞", "感動詞", "代名詞"}
 EXCLUDE_POS_DETAIL = {"非自立", "代名詞", "数"}
@@ -14,50 +11,7 @@ NUMERAL_POS = "数詞"
 DEPENDENT_POS = "非自立可能"  # dependent forms: こと, もの, ため, いる
 FILLER = "数詞", "フィラー"
 
-ytt_api = YouTubeTranscriptApi()
 tagger = Tagger()
-
-
-def fetch_raw_captions_deprecated(video_id: str):
-    snippets = ytt_api.fetch(video_id, languages=("ja",)).snippets
-    return [
-        {
-            "index": i,
-            "text": snippet.text,
-            "start": snippet.start,
-            "duration": snippet.duration,
-        }
-        for i, snippet in enumerate(snippets)
-    ]
-
-
-def fetch_raw_captions(video_id: str, lang: str = "ja") -> dict:
-    """Sub-segments level caption fetching."""
-
-    ydl_opts = {
-        "skip_download": True,
-        "quiet": True,
-        "no_warnings": True,
-        "format": None,
-        "extract_flat": False,
-    }
-
-    url = f"https://www.youtube.com/watch?v={video_id}"
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(url, download=False)
-
-    subs = info.get("subtitles", {}).get(lang) or info.get(
-        "automatic_captions", {}
-    ).get(lang)
-    if not subs:
-        raise RuntimeError(f"No {lang} captions available for {video_id}")
-
-    json3_entry = next((s for s in subs if s["ext"] == "json3"), None)
-    if not json3_entry:
-        raise RuntimeError("No json3 format available")
-
-    data = requests.get(json3_entry["url"]).json()
-    return data
 
 
 def get_line_level_captions(captionData: dict):
