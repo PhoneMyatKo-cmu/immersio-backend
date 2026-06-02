@@ -10,6 +10,7 @@ from services.video_services import (
     get_video_by_youtube_video_id,
     save_video,
 )
+from services.video_validation_service import validate_video
 from services.vocab_services import save_vocabularies
 from utils.captions_helpers import (
     fetch_raw_captions,
@@ -20,7 +21,6 @@ from utils.sentence_reconstruction import (
     reconstruct_sentence_for_auto_generate,
     reconstruct_sentence_for_manual,
 )
-from utils.video_validation_helpers import validate_video
 
 
 class SubmissionResult(BaseModel):
