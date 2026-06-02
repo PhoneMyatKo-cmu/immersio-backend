@@ -10,14 +10,15 @@ from scipy.spatial.distance import euclidean
 import matplotlib.pyplot as plt
 from yt_dlp import YoutubeDL
 
-model = WhisperModel("small", device='cuda' if torch.cuda.is_available() else 'cpu', compute_type="float16" if torch.cuda.is_available() else "int8")
+model = WhisperModel("medium", device='cuda' if torch.cuda.is_available() else 'cpu', compute_type="float16" if torch.cuda.is_available() else "int8")
 tagger = fugashi.Tagger()
 
 def transcribe_audio(file):
     # Transcribe the audio
-    result = model.transcribe(file, language='ja')
+    seg, _ = model.transcribe(file, language='ja')
+    text = ''.join([s.text for s in seg])
     # Convert the transcription to katakana using fugashi
-    words = convert_to_katakana(result["text"])
+    words = convert_to_katakana(text)
     return words
 
 def convert_to_katakana(text):
@@ -62,7 +63,9 @@ def analyze_pitch_accent(ref_audio_path, target_audio_path, sr=22050,
     return {
         "comparison": comparison,
         "score": score,
-        "figure": fig
+        "figure": fig,
+        "normalized_ref": normalized_ref,
+        "normalized_target": normalized_target,
     }
 
 def extract_pitch(audio_path: str, sr: int = 22050, start_time: float = 0.0, end_time: float = None) -> (np.ndarray, int):
@@ -81,7 +84,7 @@ def extract_pitch(audio_path: str, sr: int = 22050, start_time: float = 0.0, end
     )
 
     # pyin returns NaN for unvoiced frames — replace with 0
-    f0 = np.nan_to_num(f0, nan=0.0)
+    # f0 = np.nan_to_num(f0, nan=0.0)
 
     return f0, sr
 
@@ -102,6 +105,8 @@ def normalize_pitch(f0: np.ndarray) -> np.ndarray:
     return normalized
 
 def compare_pitch(f0_ref: np.ndarray, f0_target: np.ndarray):
+    f0_ref = f0_ref[f0_ref > 0]
+    f0_target = f0_target[f0_target > 0]
     # Reshape to 2D — fastdtw expects (n_frames, n_features)
     ref    = f0_ref.reshape(-1, 1)
     target = f0_target.reshape(-1, 1)
@@ -158,10 +163,6 @@ def plot_comparison(f0_ref, f0_target, path):
     axes[2].axhline(0, color="black", linewidth=0.8)
     axes[2].set_title("Pitch Difference After Alignment (semitones)")
     axes[2].set_ylabel("Δ semitones")
-
-    plt.tight_layout()
-    plt.savefig("pitch_comparison.png", dpi=150)
-    plt.show()
 
     return fig
 

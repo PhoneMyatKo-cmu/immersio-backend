@@ -5,6 +5,8 @@ from google import genai
 from google.genai import types
 
 from schemas.vocab_context import WordExplanationResponse
+from schemas.shadowing import PronunciationExplanationResponse
+from utils.ai_prompt_builder import build_pronunciation_feedback_prompt
 from utils.ai_prompt_builder import build_explanation_prompt
 
 load_dotenv()
@@ -33,4 +35,34 @@ def get_context_explanation_from_gemini(
         ),
     )
 
+    return response.parsed
+
+def get_pronunciation_feedback_from_gemini(
+    cer: float,
+    pitch_score: float,
+    user_katakana: str,
+    caption_katakana: str,
+    user_pitch: list[float],
+    reference_pitch: list[float],
+    caption: str,
+) -> str:
+    prompt_text = build_pronunciation_feedback_prompt(
+        cer=cer,
+        pitch_score=pitch_score,
+        user_katakana=user_katakana,
+        caption_katakana=caption_katakana,
+        user_pitch=user_pitch,
+        reference_pitch=reference_pitch,
+        caption=caption,
+    )
+    print("Generating pronunciation feedback with Gemini using prompt:...")
+    response = client.models.generate_content(
+        model="gemini-3-flash-preview",
+        contents=prompt_text,
+        config=types.GenerateContentConfig(
+            response_mime_type="application/json",
+            response_schema=PronunciationExplanationResponse,
+            temperature=0.2,),
+    )
+    print(f"Gemini response: {response.text}")
     return response.parsed
