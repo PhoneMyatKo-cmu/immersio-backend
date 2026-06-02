@@ -41,3 +41,4 @@ downloads/*
 gct_key.json
 audio.mp3
 test_faster_whisper.ipynb
+tests/test_video_submission_service.py

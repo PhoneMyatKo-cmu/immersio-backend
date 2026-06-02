@@ -9,3 +9,7 @@ class VideoRespone(BaseModel):
     duration_seconds: int
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class VideoUrl(BaseModel):
+    youtube_url: str
