@@ -1,8 +1,11 @@
 import isodate
-from sqlalchemy import func, select, text
+from sqlalchemy import func, select, text, update
 from sqlalchemy.orm import Session
 
+from db.base import SessionLocal
 from models.video import DifficultyLevel, Video
+from services.video_vocab_service import get_video_vocab_with_tiers
+from utils.video_validation_helpers import compute_difficulty
 
 
 def check_video_exists(youtube_video_id: str, db: Session) -> Video | None:
@@ -101,3 +104,20 @@ def get_videos(db: Session, search: str = None, page: int = 1, page_size: int = 
 def get_total_video_count(db: Session, stmt: select):
     total_videos = db.scalar(select(func.count()).select_from(stmt.subquery()))
     return total_videos
+
+
+def save_difficulty(video_id: int, db: Session):
+    video_vocab_list = get_video_vocab_with_tiers(video_id=video_id, db=db)
+    difficulty_level = compute_difficulty(video_vocab=video_vocab_list)
+
+    if difficulty_level == "unknown":
+        difficulty_level = DifficultyLevel.beginner
+    else:
+        difficulty_level = DifficultyLevel(difficulty_level)
+
+    db.execute(
+        update(Video)
+        .where(Video.id == video_id)
+        .values(difficulty_level=difficulty_level)
+    )
+    db.commit()

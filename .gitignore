@@ -34,10 +34,11 @@ Thumbs.db
 
 # custom
 services/romaji_test.py
-utils/data/jmdict-eng-3.6.2.json
+utils/data/*
 utils/test*.py
 utils/sentence_reconstruction_helpers.py
 downloads/*
 gct_key.json
 audio.mp3
 test_faster_whisper.ipynb
+tests/test_video_submission_service.py
