@@ -1,7 +1,7 @@
 from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
-from models.vocab import Vocabulary
+from models.vocab import EstimatedLevel, Vocabulary
 from utils.dictionary_lookup_helpers import lookup_word_full
 
 
@@ -25,6 +25,7 @@ def save_vocabularies(tokens: list, db: Session):
                 japanese_form=token[0],
                 reading=looked_up_token["romanji_reading"],
                 meanings=looked_up_token["meanings"],
+                estimated_level=EstimatedLevel(looked_up_token["jlpt_tier"]),
             )
             db.add(vocab)
     db.commit()

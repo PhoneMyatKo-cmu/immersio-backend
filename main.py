@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -19,6 +21,7 @@ from models.user import User
 from models.user_vocab_library import UserVocabLibrary
 from models.user_vocab_profile import UserVocabProfile
 from models.video import Video
+from models.video_vocab_profile import VideoVocabProfile
 from models.vocab import Vocabulary
 
 app = FastAPI()
@@ -33,6 +36,10 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+)
+
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s"
 )
 
 

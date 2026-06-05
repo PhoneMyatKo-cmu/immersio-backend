@@ -1,5 +1,6 @@
 import json
 import os
+import re
 from collections import defaultdict
 from functools import lru_cache
 
@@ -8,25 +9,107 @@ from fugashi import Tagger
 
 from services.google_translate_service import fall_back_google_translate
 
-converter = Cutlet()
+LEMMA_NORMALIZE = {
+    "為る": "する",
+    "居る": "いる",
+    "有る": "ある",
+    "成る": "なる",
+    "出来る": "できる",
+    "良い": "いい",
+    "無い": "ない",
+}
+
+converter = Cutlet(use_foreign_spelling=False)
 
 
 @lru_cache(maxsize=1)
-def _load_index() -> dict:
-    path = os.path.join(os.path.dirname(__file__), "data", "jmdict-eng-3.6.2.json")
-    with open(path, "r", encoding="utf-8") as f:
+def _load_index_deprecated() -> tuple[dict, dict]:
+    path = os.path.join(
+        os.path.dirname(__file__), "data", "jmdictExtended-2026-05-26.json"
+    )
+    with open(path, "r", encoding="utf-8-sig") as f:
         data = json.load(f)
 
     index = {}
+    jlpt_index = {}
     for word in data["words"]:
+        jlpt_level = None
         # Index by kanji forms
         for k in word.get("kanji", []):
             index.setdefault(k["text"], word)
+            level = k.get("jlptLevel")
+            if level:
+                jlpt_level = level
         # Index by kana forms
         for k in word.get("kana", []):
             index.setdefault(k["text"], word)
+            level = k.get("jlptLevel")
+            if level:
+                jlpt_level = level
 
-    return index
+        if jlpt_level:
+            tier = f"N{jlpt_level}"
+            for k in word.get("kanji", []):
+                jlpt_index[k["text"]] = tier
+            for k in word.get("kana", []):
+                jlpt_index[k["text"]] = tier
+
+    return index, jlpt_index
+
+
+@lru_cache(maxsize=1)
+def _load_index() -> tuple[dict, dict]:
+    path = os.path.join(
+        os.path.dirname(__file__), "data", "jmdictExtended-2026-05-26.json"
+    )
+    with open(path, "r", encoding="utf-8-sig") as f:
+        data = json.load(f)
+
+    index: dict[str, dict] = {}
+    key_is_common: dict[str, bool] = {}  # build-time helper only
+
+    for word in data["words"]:
+        for form in word.get("kanji", []) + word.get("kana", []):
+            text = form["text"]
+            common = bool(form.get("common"))  # is THIS spelling/reading common?
+            if text not in index:
+                index[text] = word
+                key_is_common[text] = common
+            elif common and not key_is_common[text]:
+                index[text] = word  # upgrade: common beats a stored non-common entry
+                key_is_common[text] = True
+            # else: keep it — first common wins, otherwise first-seen wins
+
+    # JLPT tier tied to the selected entry (prefer the matched form's level)
+    jlpt_index: dict[str, str] = {}
+    for text, word in index.items():
+        forms = word.get("kanji", []) + word.get("kana", [])
+        level = next(
+            (
+                f.get("jlptLevel")
+                for f in forms
+                if f["text"] == text and f.get("jlptLevel")
+            ),
+            None,
+        ) or next((f.get("jlptLevel") for f in forms if f.get("jlptLevel")), None)
+        if level:
+            jlpt_index[text] = f"N{level}"
+
+    return index, jlpt_index
+
+
+def get_jlpt_tier(base_form: str) -> str:
+    _, jlpt_index = _load_index()
+
+    tier = jlpt_index.get(base_form)
+    if tier:
+        return tier
+
+    normalised = LEMMA_NORMALIZE.get(base_form)
+    if normalised:
+        return jlpt_index.get(normalised, "UNKNOWN")
+
+    return "UNKNOWN"
 
 
 def normalize_pos_simple(pos_list: list[str]) -> str:
@@ -85,9 +168,10 @@ def lookup_word_full(token: tuple) -> dict:
         return {
             "meanings": [{"pos": None, "meanings": None}],
             "romanji_reading": None,
+            "jlpt_tier": "UNKNOWN",
             "found": False,
         }
-    index = _load_index()
+    index = _load_index()[0]
     meanings = []
     reading = surface_form
 
@@ -120,8 +204,14 @@ def lookup_word_full(token: tuple) -> dict:
         ]
 
     romanji_reading = kana_to_romanji(reading)
+    jlpt_tier = get_jlpt_tier(base_form)
 
-    return {"meanings": meanings, "romanji_reading": romanji_reading, "found": True}
+    return {
+        "meanings": meanings,
+        "romanji_reading": romanji_reading,
+        "jlpt_tier": jlpt_tier,
+        "found": True,
+    }
 
 
 def kana_to_romanji(kana: str):
@@ -132,9 +222,6 @@ def kana_to_romanji(kana: str):
     romaji_reading = converter.romaji(text=kana, capitalize=False)
 
     return romaji_reading
-
-
-import re
 
 
 def is_japanese(text):
