@@ -23,7 +23,7 @@ def get_ai_explanation(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthenticated"
         )
-
+    print(contextRequest)
     try:
         explanation = get_context_explanation_from_ai(contextRequest, db)
         return explanation

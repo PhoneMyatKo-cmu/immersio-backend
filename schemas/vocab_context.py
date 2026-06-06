@@ -5,11 +5,11 @@ from pydantic import BaseModel, Field
 
 class ContextRequest(BaseModel):
     vocab_id: int
-    sentence_id: int
+    caption_id: int
     surface_form: str
     pos: list
     meanings: list
-    context_sentence: str
+    context_caption: str
 
 
 class ContextResponse(BaseModel):
