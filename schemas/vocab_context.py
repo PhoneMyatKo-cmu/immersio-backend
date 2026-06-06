@@ -60,5 +60,5 @@ class VocabResponse(BaseModel):
 class UserVocabSave(BaseModel):
     vocab_id: int
     video_id: int
-    sentence_id: int
+    caption_id: int
     timestamp: float
