@@ -13,6 +13,7 @@ from services.video_services import (
 from services.video_validation_service import validate_video
 from services.vocab_services import save_vocabularies
 from services.youtube_api_service import fetch_raw_captions
+from services.yt_whisper import youtube_to_sentences
 from utils.captions_helpers import (
     get_line_level_captions,
     process_captions,
@@ -132,4 +133,4 @@ def reconstruct_context_sentences(
     if is_standard:
         return reconstruct_sentence_for_manual(processed_captions)
 
-    return reconstruct_sentence_for_auto_generate(raw_captions)
+    return youtube_to_sentences("ulQNz_oQ76U")
