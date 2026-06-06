@@ -45,7 +45,7 @@ class WordExplanationResponse(BaseModel):
 class VocabRequest(BaseModel):
     vocab_surface_form: str
     video_id: int
-    timestamp: float
+    caption: dict
 
 
 class VocabResponse(BaseModel):

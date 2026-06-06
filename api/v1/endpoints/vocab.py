@@ -5,10 +5,12 @@ from core.auth import get_current_user
 from db.base import get_db
 from schemas.user import UserRead
 from schemas.vocab_context import UserVocabSave, VocabRequest, VocabResponse
-from services.context_sentence_services import (
-    find_context_sentence,
-    get_sentence_translation,
-)
+
+# from services.context_sentence_services import (
+#     find_context_sentence,
+#     get_sentence_translation,
+# )
+from services.caption_services import get_sentence_translation
 from services.user_vocab_service import check_duplicate_vocab, save_vocab_to_library
 from services.vocab_services import get_vocab_by_surface_form
 
@@ -20,8 +22,7 @@ def get_vocabulary(
     vocabRequest: VocabRequest, db: Session = Depends(get_db)
 ) -> VocabResponse:
     surface_form = vocabRequest.vocab_surface_form
-    print(surface_form)
-
+    print(vocabRequest)
     if not surface_form:
         raise HTTPException(400, "Empty Request")
 
@@ -30,12 +31,14 @@ def get_vocabulary(
     if not vocab:
         raise HTTPException(404, "Meaning Not Found.")
 
-    context_sentence = find_context_sentence(
-        word=surface_form,
-        video_id=vocabRequest.video_id,
-        timestamp=vocabRequest.timestamp,
-        db=db,
-    )
+    # context_sentence = find_context_sentence(
+    #     word=surface_form,
+    #     video_id=vocabRequest.video_id,
+    #     timestamp=vocabRequest.timestamp,
+    #     db=db,
+    # )
+
+    context_sentence = vocabRequest.caption
 
     context_sentence_translation = get_sentence_translation(context_sentence, db)
 

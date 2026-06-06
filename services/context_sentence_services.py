@@ -77,31 +77,31 @@ def find_context_sentence(
     }
 
 
-def cache_translation(sentence_id: int, translation: str, db: Session):
-    sentence = db.scalars(select(Sentence).where(Sentence.id == sentence_id)).first()
-    sentence.translation = translation
-    db.add(sentence)
-    db.commit()
+# def cache_translation(sentence_id: int, translation: str, db: Session):
+#     sentence = db.scalars(select(Sentence).where(Sentence.id == sentence_id)).first()
+#     sentence.translation = translation
+#     db.add(sentence)
+#     db.commit()
 
 
-def get_sentence_translation(context_sentence: dict, db: Session) -> str:
+# def get_sentence_translation(context_sentence: dict, db: Session) -> str:
 
-    if context_sentence["translation"]:
-        print("Translation cache")
-        return context_sentence["translation"]
+#     if context_sentence["translation"]:
+#         print("Translation cache")
+#         return context_sentence["translation"]
 
-    else:
-        try:
-            print("Translation cache miss")
-            context_sentence_translation = fall_back_google_translate(
-                context_sentence["text"]
-            )[0]
-            cache_translation(context_sentence["id"], context_sentence_translation, db)
-            return context_sentence_translation
+#     else:
+#         try:
+#             print("Translation cache miss")
+#             context_sentence_translation = fall_back_google_translate(
+#                 context_sentence["text"]
+#             )[0]
+#             cache_translation(context_sentence["id"], context_sentence_translation, db)
+#             return context_sentence_translation
 
-        except Exception as e:
-            print(e)
-            return "Translation service currently unavailable!"
+#         except Exception as e:
+#             print(e)
+#             return "Translation service currently unavailable!"
 
 
 def get_sentence_by_video_id(video_id: int, db: Session):
