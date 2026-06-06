@@ -4,8 +4,12 @@ from sqlalchemy.orm import Session
 
 from services.caption_services import save_tokenized_captions
 from services.context_sentence_services import save_context_sentence
+from services.shadowing_sentence_background_service import (
+    build_shadowing_sentences_with_whisper_background_task,
+)
 from services.video_background_service import process_video_vocab_background
 from services.video_services import (
+    change_shadowing_status,
     check_video_exists,
     get_video_by_youtube_video_id,
     save_video,
@@ -82,11 +86,11 @@ def submit_video_for_processing(
     ]
     surface_form_list = [token[0] for token in flattened_token]
 
-    context_sentences = reconstruct_context_sentences(
-        validation_result=validation_result,
-        raw_captions=raw_captions,
-        processed_captions=processed_captions,
-    )
+    # context_sentences = reconstruct_context_sentences(
+    #     validation_result=validation_result,
+    #     raw_captions=raw_captions,
+    #     processed_captions=processed_captions,
+    # )
 
     try:
         video = save_video(
@@ -101,7 +105,19 @@ def submit_video_for_processing(
 
         save_vocabularies(flattened_token, db)
 
-        save_context_sentence(context_sentences, saved_video_id, db)
+        if is_standard(validation_result):
+            sentences = reconstruct_sentence_for_manual(processed_captions)
+            # save_shadowing_sentences(sentences, saved_video_id, db)
+
+            save_context_sentence(sentences, saved_video_id, db)
+            # mark_shadowing_ready(saved_video_id, db)
+            change_shadowing_status(saved_video_id, db)
+        else:
+            background_tasks.add_task(
+                build_shadowing_sentences_with_whisper_background_task,
+                youtube_video_id,
+                saved_video_id,
+            )
 
         background_tasks.add_task(
             process_video_vocab_background,
@@ -118,19 +134,28 @@ def submit_video_for_processing(
     )
 
 
-def reconstruct_context_sentences(
-    validation_result: dict,
-    raw_captions: dict,
-    processed_captions: list[dict],
-) -> list[dict]:
+# def reconstruct_context_sentences(
+#     validation_result: dict,
+#     raw_captions: dict,
+#     processed_captions: list[dict],
+# ) -> list[dict]:
+#     available_captions = validation_result["suitablity"]["available_captions"]
+
+#     is_standard = any(
+#         track.get("snippet", {}).get("trackKind") == "standard"
+#         for track in available_captions
+#     )
+
+#     if is_standard:
+#         return reconstruct_sentence_for_manual(processed_captions)
+
+#     return youtube_to_sentences("ulQNz_oQ76U")
+
+
+def is_standard(validation_result: dict):
     available_captions = validation_result["suitablity"]["available_captions"]
 
-    is_standard = any(
+    return any(
         track.get("snippet", {}).get("trackKind") == "standard"
         for track in available_captions
     )
-
-    if is_standard:
-        return reconstruct_sentence_for_manual(processed_captions)
-
-    return youtube_to_sentences("ulQNz_oQ76U")

@@ -121,3 +121,11 @@ def save_difficulty(video_id: int, db: Session):
         .values(difficulty_level=difficulty_level)
     )
     db.commit()
+
+
+def change_shadowing_status(video_id: int, db: Session) -> None:
+    """Set is_shadowing_ready to True by video ID."""
+    db.execute(
+        update(Video).where(Video.id == video_id).values(is_shadowing_ready=True)
+    )
+    db.commit()
