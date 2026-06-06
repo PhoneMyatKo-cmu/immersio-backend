@@ -102,3 +102,10 @@ def get_sentence_translation(context_sentence: dict, db: Session) -> str:
         except Exception as e:
             print(e)
             return "Translation service currently unavailable!"
+
+
+def get_sentence_by_video_id(video_id: int, db: Session):
+    results = db.scalars(
+        select(Sentence).where(Sentence.video_id == video_id)
+    ).fetchall()
+    return results
