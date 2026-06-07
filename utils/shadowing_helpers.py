@@ -23,7 +23,7 @@ def transcribe_audio(file):
 
 def convert_to_katakana(text):
     words = tagger(text)
-    s = [(word.surface, word.feature.kana) for word in words]
+    s = [(word.surface, word.feature.kana) if word.feature.kana else (word.surface, word.surface) for word in words]
     s = [(surface, kana) for surface, kana in s if kana != '*' and kana != '']
     return s
 
