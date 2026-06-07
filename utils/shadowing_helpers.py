@@ -23,16 +23,32 @@ def transcribe_audio(file):
 
 def convert_to_katakana(text):
     words = tagger(text)
-    s = ''.join([word.feature.kana for word in words])
-    s = s.replace("*", "")
+    s = [(word.surface, word.feature.kana) for word in words]
+    s = [(surface, kana) for surface, kana in s if kana != '*' and kana != '']
     return s
 
-def calculate_cer(reference, target):
-    # Simple character error rate calculation
-    ref_chars = list(reference)
-    tgt_chars = list(target)
+def get_caption_error(reference, wrong_indices):
+    indices = [0]
+    result = []
 
-    # Standard Levenshtein DP
+    for ref_word, ref_kana in reference:
+        last_index = indices[-1]
+        indices.append(last_index + len(ref_kana))
+        word_start = indices[-2]
+        word_end = indices[-1]
+
+        # A word is "wrong" if any error index falls within its character range
+        has_error = any(word_start <= idx < word_end for idx in wrong_indices)
+        result.append((ref_word, not has_error))
+
+    return result
+
+
+def calculate_cer(reference, target):
+    ref_chars = list(''.join([kana for _, kana in reference]))
+    tgt_chars = list(''.join([kana for _, kana in target]))
+
+    # Build DP table
     d = [[0] * (len(tgt_chars) + 1) for _ in range(len(ref_chars) + 1)]
     for i in range(len(ref_chars) + 1): d[i][0] = i
     for j in range(len(tgt_chars) + 1): d[0][j] = j
@@ -44,8 +60,23 @@ def calculate_cer(reference, target):
             else:
                 d[i][j] = 1 + min(d[i-1][j], d[i][j-1], d[i-1][j-1])
 
+    # Traceback to find only the indices involved in actual edits
+    wrong_indices = []
+    i, j = len(ref_chars), len(tgt_chars)
+    while i > 0 or j > 0:
+        if i > 0 and j > 0 and ref_chars[i-1] == tgt_chars[j-1]:
+            i -= 1; j -= 1  # match — no error
+        elif i > 0 and j > 0 and d[i][j] == d[i-1][j-1] + 1:
+            wrong_indices.append(i - 1)  # substitution
+            i -= 1; j -= 1
+        elif j > 0 and d[i][j] == d[i][j-1] + 1:
+            j -= 1  # insertion in target — no ref index to record
+        else:
+            wrong_indices.append(i - 1)  # deletion
+            i -= 1
+
     cer = d[len(ref_chars)][len(tgt_chars)] / len(ref_chars)
-    return cer
+    return cer, wrong_indices
 
 def analyze_pitch_accent(ref_audio_path, target_audio_path, sr=22050,
                          start_time=0.0, end_time=None):
