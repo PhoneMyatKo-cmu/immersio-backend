@@ -9,7 +9,7 @@ import fugashi
 from faster_whisper import WhisperModel
 import base64
 from services.gemini_api_service import get_pronunciation_feedback_from_gemini
-from utils.shadowing_helpers import download_youtube_audio, transcribe_audio, analyze_pitch_accent, convert_to_katakana, calculate_cer
+from utils.shadowing_helpers import download_youtube_audio, transcribe_audio, analyze_pitch_accent, convert_to_katakana, calculate_cer, get_caption_error
 
 router = APIRouter(prefix="/shadowing")
 
@@ -28,8 +28,10 @@ def pronunciation_score(db: Session = Depends(get_db),
     # Compare with the caption (also converted to katakana)
     caption_katakana = convert_to_katakana(caption)
     print(f"Caption katakana: {caption_katakana}")
-    cer = calculate_cer(caption_katakana, user_katakana)
+    cer, wrong_indices = calculate_cer(caption_katakana, user_katakana)
+    caption_error = get_caption_error(caption_katakana, wrong_indices)
     print(f"CER: {cer}")
+    print(f"Caption error: {caption_error}")
 
     # Download reference audio
     if video_id and Path(f"temp_audios/{video_id}_audio.wav").exists() == False:
@@ -58,7 +60,7 @@ def pronunciation_score(db: Session = Depends(get_db),
         "pitch_comparison_figure": figure,
         "user_pitch": pitch_result["normalized_target"].tolist(),
         "reference_pitch": pitch_result["normalized_ref"].tolist(),
-
+        "caption_error": caption_error,
     }
 
 @router.post("/explain")
