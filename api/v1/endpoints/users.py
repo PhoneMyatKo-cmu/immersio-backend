@@ -23,6 +23,8 @@ from schemas.user import (
     UserCreate,
     UserLogin,
     UserRead,
+    UserUpdate,
+    UserUpdatePassword,
 )
 from models.user import User
 
@@ -118,3 +120,32 @@ def logout_user(
 @router.get("/auth/me", response_model=UserRead)
 def read_current_user(current_user: User = Depends(get_current_user)) -> User:
     return current_user
+
+
+@router.post("/auth/update-profile", response_model=UserRead)
+def update_profile(
+    payload: UserUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> User:
+    for field, value in payload.model_dump(exclude_unset=True).items():
+        setattr(current_user, field, value)
+    db.commit()
+    db.refresh(current_user)
+    return current_user
+
+@router.post("/auth/reset-password", response_model=Message)
+def reset_password(
+    payload: UserUpdatePassword,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Message:
+    if not authenticate_user(db, current_user.email, payload.current_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Current password is incorrect",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    current_user.password_hash = hash_password(payload.new_password)
+    db.commit()
+    return Message(detail="Password updated successfully")
