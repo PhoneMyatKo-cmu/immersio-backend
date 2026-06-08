@@ -45,19 +45,14 @@ def pronunciation_score(db: Session = Depends(get_db),
     print(f"Analyzing pitch accent for video ID: {video_id}")
     pitch_result = analyze_pitch_accent(f"temp_audios/{video_id}_audio.wav", f"temp_audios/uploaded_{file.filename}", start_time=start_time, end_time=end_time)
     print(f"Pitch score: {pitch_result['score']}")
-    print(f"Pitch comparison figure: {pitch_result['figure']}")
     # Delete temporary audio files
     Path(f"temp_audios/uploaded_{file.filename}").unlink(missing_ok=True)
 
-    buf = io.BytesIO()
-    pitch_result["figure"].savefig(buf, format='png')
-    figure = base64.b64encode(buf.getvalue()).decode('utf-8')
     return {
         "cer": cer,
         "user_katakana": user_katakana,
         "caption_katakana": caption_katakana,
         "pitch_score": pitch_result["score"],
-        "pitch_comparison_figure": figure,
         "user_pitch": pitch_result["normalized_target"].tolist(),
         "reference_pitch": pitch_result["normalized_ref"].tolist(),
         "caption_error": caption_error,
