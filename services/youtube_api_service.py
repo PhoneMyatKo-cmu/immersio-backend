@@ -4,6 +4,7 @@ import httpx
 import requests
 import yt_dlp
 from dotenv import load_dotenv
+from yt_dlp import YoutubeDL
 
 load_dotenv()
 
@@ -105,3 +106,48 @@ def fetch_raw_captions(video_id: str, lang: str = "ja") -> dict:
 
     data = requests.get(json3_entry["url"]).json()
     return data
+
+def download_audio(url_or_id: str, out_dir: str, extract_wav: bool = False) -> str:
+    """
+    Download the best audio stream to out_dir and return its path.
+
+    Args:
+        url_or_id:    Full YouTube URL or bare video ID.
+        out_dir:      Directory to save the file.
+        extract_wav:  If True, transcode to WAV via FFmpeg (requires ffmpeg on PATH).
+                      Defaults to False — faster-whisper can decode m4a/webm directly.
+
+    Returns:
+        Absolute path to the downloaded (or transcoded) file.
+    """
+    url = (
+        url_or_id
+        if url_or_id.startswith("http")
+        else f"https://www.youtube.com/watch?v={url_or_id}"
+    )
+
+    ydl_opts = {
+        "format": "bestaudio/best",
+        "outtmpl": os.path.join(out_dir, "%(id)s.%(ext)s"),
+        "quiet": True,
+        "no_warnings": True,
+        "noplaylist": True,
+        "extractor_args": {
+            "youtube": {"player_client": ["web", "android", "ios"]},
+        },
+    }
+
+    if extract_wav:
+        ydl_opts["postprocessors"] = [{
+            "key": "FFmpegExtractAudio",
+            "preferredcodec": "wav",
+            "preferredquality": "192",
+        }]
+
+    with YoutubeDL(ydl_opts) as ydl:
+        info = ydl.extract_info(url, download=True)
+
+    reqs = info.get("requested_downloads")
+    if reqs and reqs[0].get("filepath"):
+        return reqs[0]["filepath"]
+    return ydl.prepare_filename(info)

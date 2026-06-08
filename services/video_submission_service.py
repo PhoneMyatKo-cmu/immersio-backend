@@ -17,7 +17,7 @@ from services.video_services import (
 from services.video_validation_service import validate_video
 from services.vocab_services import save_vocabularies
 from services.youtube_api_service import fetch_raw_captions
-from services.yt_whisper import youtube_to_sentences
+from services.sentence_construction_service import youtube_to_sentences
 from utils.captions_helpers import (
     get_line_level_captions,
     process_captions,

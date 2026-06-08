@@ -5,7 +5,7 @@ import logging
 from db.base import SessionLocal
 from services.context_sentence_services import save_context_sentence
 from services.video_services import change_shadowing_status
-from services.yt_whisper import youtube_to_sentences
+from services.sentence_construction_service import youtube_to_sentences
 
 logger = logging.getLogger(__name__)
 
