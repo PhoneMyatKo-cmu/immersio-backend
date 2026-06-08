@@ -1,6 +1,5 @@
 from fastapi import Depends, APIRouter, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from services.auth.authentication_service import (
@@ -27,6 +26,7 @@ from schemas.user import (
     UserUpdatePassword,
 )
 from models.user import User
+from services.user.user_services import save_user, update_user, update_user_password
 
 router = APIRouter(prefix="/auth")
 
@@ -39,18 +39,7 @@ def register_user(payload: UserCreate, db: Session = Depends(get_db)) -> User:
         password_hash=hash_password(payload.password),
         estimated_level=payload.estimated_level,
     )
-    db.add(user)
-
-    try:
-        db.commit()
-    except IntegrityError:
-        db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="A user with this email already exists",
-        ) from None
-
-    db.refresh(user)
+    save_user(user, db)
     return user
 
 
@@ -128,11 +117,8 @@ def update_profile(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> User:
-    for field, value in payload.model_dump(exclude_unset=True).items():
-        setattr(current_user, field, value)
-    db.commit()
-    db.refresh(current_user)
-    return current_user
+    updated_user = User(**payload.model_dump(exclude_unset=True))
+    return update_user(current_user, updated_user, db)
 
 @router.post("/reset-password", response_model=Message)
 def reset_password(
@@ -146,6 +132,5 @@ def reset_password(
             detail="Current password is incorrect",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    current_user.password_hash = hash_password(payload.new_password)
-    db.commit()
+    update_user_password(current_user, payload.new_password, db)
     return Message(detail="Password updated successfully")

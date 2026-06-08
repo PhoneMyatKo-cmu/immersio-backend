@@ -14,6 +14,7 @@ from models.user import User
 from db.base import get_db
 from sqlalchemy.orm import Session
 import os
+from services.user.user_services import get_user_by_email
 
 load_dotenv()
 SECRET_KEY = os.getenv("SECURITY_KEY")
@@ -60,7 +61,7 @@ def create_access_token(subject: str) -> str:
     )
 
 def authenticate_user(db: Session, email: str, password: str) -> UserRead | None:
-    user = get_user_by_email(db, email)
+    user = get_user_by_email(email, db)
     if user is None or not verify_password(password, user.password_hash):
         return None
     return user
@@ -77,9 +78,6 @@ def create_token_pair(subject: str) -> dict[str, str]:
         "access_token": create_access_token(subject),
         "refresh_token": create_refresh_token(subject),
     }
-
-def get_user_by_email(db: Session, email: str) -> UserRead | None:
-    return db.scalar(select(User).where(User.email == email.lower()))
 
 def _credentials_error(detail: str) -> HTTPException:
     return HTTPException(
@@ -165,7 +163,7 @@ def get_current_user(
         expired_detail="Access token has expired",
     )
 
-    user = get_user_by_email(db, token_data.sub)
+    user = get_user_by_email(token_data.sub, db)
     if user is None:
         raise _credentials_error("Could not validate credentials")
     return user
@@ -178,7 +176,7 @@ def get_user_from_refresh_token(refresh_token: str, db: Session) -> User:
         expired_detail="Refresh token has expired",
     )
 
-    user = get_user_by_email(db, token_data.sub)
+    user = get_user_by_email(token_data.sub, db)
     if user is None:
         raise _credentials_error("Could not validate refresh token")
     return user
