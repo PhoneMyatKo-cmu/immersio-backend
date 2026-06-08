@@ -72,7 +72,7 @@ def build_pronunciation_feedback_prompt(
         Instructions:
         1. Briefly explain what the CER indicates about pronunciation clarity.
         2. Briefly explain what the pitch similarity score indicates.
-        3. Compare the learner's katakana pronunciation with the target and identify likely pronunciation mistakes.
+        3. Compare the learner's katakana pronunciation with the target and identify likely pronunciation mistakes with original Japanese words (not just katakana).
         4. Compare the learner's pitch contour with the reference and identify major pitch accent differences.
         5. Highlight 1-3 strengths.
         6. Provide 2-4 actionable suggestions for improvement.

@@ -89,12 +89,9 @@ def analyze_pitch_accent(ref_audio_path, target_audio_path, sr=22050,
     comparison = compare_pitch(normalized_ref, normalized_target)
     score = score_accent(comparison["normalized_distance"])
 
-    fig = plot_comparison(normalized_ref, normalized_target, comparison["path"])
-
     return {
         "comparison": comparison,
         "score": score,
-        "figure": fig,
         "normalized_ref": normalized_ref,
         "normalized_target": normalized_target,
     }
@@ -168,34 +165,6 @@ def score_accent(normalized_distance: float) -> dict:
     score = max(0, 100 - (normalized_distance * 20))  # Example: 0.5 → 90, 1.5 → 70, 3.0 → 40
 
     return {"grade": grade, "feedback": feedback, "score": round(score, 4)}
-
-
-def plot_comparison(f0_ref, f0_target, path):
-    fig, axes = plt.subplots(3, 1, figsize=(12, 8))
-
-    # Raw pitch curves
-    axes[0].plot(f0_ref,    label="Reference", color="blue",   alpha=0.8)
-    axes[0].plot(f0_target, label="Target",    color="orange", alpha=0.8)
-    axes[0].set_title("Pitch Curves (normalized semitones)")
-    axes[0].set_ylabel("Semitones")
-    axes[0].legend()
-
-    # DTW alignment path
-    path_ref    = [p[0] for p in path]
-    path_target = [p[1] for p in path]
-    axes[1].plot(path_ref, path_target, color="green", linewidth=0.8)
-    axes[1].set_title("DTW Alignment Path")
-    axes[1].set_xlabel("Reference frame")
-    axes[1].set_ylabel("Target frame")
-
-    # Frame-by-frame difference after alignment
-    diff = [f0_ref[p[0]] - f0_target[p[1]] for p in path]
-    axes[2].fill_between(range(len(diff)), diff, alpha=0.5, color="red")
-    axes[2].axhline(0, color="black", linewidth=0.8)
-    axes[2].set_title("Pitch Difference After Alignment (semitones)")
-    axes[2].set_ylabel("Δ semitones")
-
-    return fig
 
 def download_youtube_audio(youtube_url: str, output_path: str):
     ydl_opts = {
