@@ -14,7 +14,7 @@ from services.caption.caption_services import get_sentence_translation
 from services.user_vocab.user_vocab_service import check_duplicate_vocab, save_vocab_to_library
 from services.vocab.vocab_services import get_vocab_by_surface_form
 
-router = APIRouter(prefix="/get-vocab")
+router = APIRouter(prefix="/vocab")
 
 
 @router.post("/")

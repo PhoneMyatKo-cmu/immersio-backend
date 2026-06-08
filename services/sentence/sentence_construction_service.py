@@ -128,11 +128,10 @@ def youtube_to_sentences(
     # the transcript (list) inside the block, so by the time the audio is
     # removed, transcription is finished and only the segments (in memory) are
     # needed for reconstruction.
-    with tempfile.TemporaryDirectory() as tmp:
-        audio_path = download_audio(url_or_id, tmp, extract_wav=False)
-        segments = transcribe_words(
-            audio_path, model, language=language, vad_filter=vad_filter
-        )
+    audio_path = download_audio(url_or_id, "temp_audios", extract_wav=True)
+    segments = transcribe_words(
+        audio_path, model, language=language, vad_filter=vad_filter
+    )
 
     return reconstruct_sentences_from_whisper(segments, shadow=shadow)
 

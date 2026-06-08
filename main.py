@@ -6,14 +6,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from api.v1.endpoints import (
     ai_explanation,
     caption,
-    home_feed,
     sentence,
     shadowing,
-    user_add_video,
-    video_detail,
+    video,
+    video_submission,
     vocab,
 )
-from api.v1.endpoints.users import router as user_router
+from api.v1.endpoints.auth import router as user_router
 from db.base import Base, engine
 from models.ai_explanation_cache import AI_Explanation_Cache
 from models.processed_caption import ProcessedCaption
@@ -54,12 +53,11 @@ def root():
     return {"message": "Immersio backend API running"}
 
 
-app.include_router(user_add_video.router)
+app.include_router(video_submission.router)
 app.include_router(vocab.router)
 app.include_router(caption.router)
-app.include_router(video_detail.router)
 app.include_router(ai_explanation.router)
 
-app.include_router(home_feed.router)
+app.include_router(video.router)
 app.include_router(shadowing.router)
 app.include_router(sentence.router)

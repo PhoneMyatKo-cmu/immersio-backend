@@ -28,9 +28,9 @@ from schemas.user import (
 )
 from models.user import User
 
-router = APIRouter()
+router = APIRouter(prefix="/auth")
 
-@router.post("/auth/register", response_model=UserRead, status_code=status.HTTP_201_CREATED)
+@router.post("/register", response_model=UserRead, status_code=status.HTTP_201_CREATED)
 def register_user(payload: UserCreate, db: Session = Depends(get_db)) -> User:
     user = User(
         first_name=payload.first_name.strip(),
@@ -54,7 +54,7 @@ def register_user(payload: UserCreate, db: Session = Depends(get_db)) -> User:
     return user
 
 
-@router.post("/auth/login", response_model=Token)
+@router.post("/login", response_model=Token)
 def login_user(payload: UserLogin, db: Session = Depends(get_db)) -> Token:
     user = authenticate_user(db, payload.email, payload.password)
     if user is None:
@@ -66,7 +66,7 @@ def login_user(payload: UserLogin, db: Session = Depends(get_db)) -> Token:
     return Token(**create_token_pair(user.email))
 
 
-@router.post("/auth/token", response_model=Token)
+@router.post("/token", response_model=Token)
 def issue_token(
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db),
@@ -81,7 +81,7 @@ def issue_token(
     return Token(**create_token_pair(user.email))
 
 
-@router.post("/auth/refresh", response_model=Token)
+@router.post("/refresh", response_model=Token)
 def refresh_access_token(
     payload: RefreshTokenRequest,
     db: Session = Depends(get_db),
@@ -96,7 +96,7 @@ def refresh_access_token(
     return Token(**create_token_pair(user.email))
 
 
-@router.post("/auth/logout", response_model=Message)
+@router.post("/logout", response_model=Message)
 def logout_user(
     payload: LogoutRequest | None = None,
     access_token: str = Depends(oauth2_scheme),
@@ -117,12 +117,12 @@ def logout_user(
     return Message(detail="Logged out successfully")
 
 
-@router.get("/auth/me", response_model=UserRead)
+@router.get("/me", response_model=UserRead)
 def read_current_user(current_user: User = Depends(get_current_user)) -> User:
     return current_user
 
 
-@router.post("/auth/update-profile", response_model=UserRead)
+@router.post("/update-profile", response_model=UserRead)
 def update_profile(
     payload: UserUpdate,
     current_user: User = Depends(get_current_user),
@@ -134,7 +134,7 @@ def update_profile(
     db.refresh(current_user)
     return current_user
 
-@router.post("/auth/reset-password", response_model=Message)
+@router.post("/reset-password", response_model=Message)
 def reset_password(
     payload: UserUpdatePassword,
     current_user: User = Depends(get_current_user),
