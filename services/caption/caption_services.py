@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from db.base import get_db
 from models.processed_caption import ProcessedCaption
-from services.google_translate_service import fall_back_google_translate
+from services.external.google_translate_service import google_translate
 
 
 def save_tokenized_captions(tokenized_captions: list[dict], video_id: int, db: Session):
@@ -59,7 +59,7 @@ def get_sentence_translation(context_sentence: dict, db: Session) -> str:
     else:
         try:
             print("Translation cache miss")
-            context_sentence_translation = fall_back_google_translate(
+            context_sentence_translation = google_translate(
                 context_sentence["text"]
             )[0]
             cache_translation(context_sentence["id"], context_sentence_translation, db)

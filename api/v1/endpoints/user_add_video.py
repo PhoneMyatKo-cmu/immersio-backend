@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from db.base import get_db
 from schemas.video import VideoUrl
-from services.video_submission_service import (
+from services.video.video_submission_service import (
     SubmissionResult,
     submit_video_for_processing,
 )

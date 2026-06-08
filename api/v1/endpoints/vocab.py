@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from core.auth import get_current_user
+from services.auth.authentication_service import get_current_user
 from db.base import get_db
 from schemas.user import UserRead
 from schemas.vocab_context import UserVocabSave, VocabRequest, VocabResponse
@@ -10,9 +10,9 @@ from schemas.vocab_context import UserVocabSave, VocabRequest, VocabResponse
 #     find_context_sentence,
 #     get_sentence_translation,
 # )
-from services.caption_services import get_sentence_translation
-from services.user_vocab_service import check_duplicate_vocab, save_vocab_to_library
-from services.vocab_services import get_vocab_by_surface_form
+from services.caption.caption_services import get_sentence_translation
+from services.user_vocab.user_vocab_service import check_duplicate_vocab, save_vocab_to_library
+from services.vocab.vocab_services import get_vocab_by_surface_form
 
 router = APIRouter(prefix="/get-vocab")
 

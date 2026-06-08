@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 from db.base import get_db
 from models.processed_caption import ProcessedCaption
-from services.caption_services import get_captions_by_video_id
+from services.caption.caption_services import get_captions_by_video_id
 
 router = APIRouter(prefix="/get-caption")
 

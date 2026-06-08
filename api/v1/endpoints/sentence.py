@@ -3,7 +3,7 @@ from pydantic import BaseModel, ConfigDict
 from sqlalchemy.orm import Session
 
 from db.base import get_db
-from services.context_sentence_services import get_sentence_by_video_id
+from services.sentence.sentence_services import get_sentence_by_video_id
 
 router = APIRouter(prefix="/sentence")
 

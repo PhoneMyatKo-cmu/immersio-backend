@@ -3,7 +3,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from core.auth import (
+from services.auth.authentication_service import (
     ACCESS_TOKEN_TYPE,
     REFRESH_TOKEN_TYPE,
     authenticate_user,

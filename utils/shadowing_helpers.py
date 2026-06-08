@@ -10,7 +10,7 @@ from scipy.spatial.distance import euclidean
 import matplotlib.pyplot as plt
 from yt_dlp import YoutubeDL
 
-from services.whisper_service import get_model, transcribe_words
+from services.external.whisper_service import get_model, transcribe_words
 
 tagger = fugashi.Tagger()
 

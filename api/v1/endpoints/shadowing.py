@@ -8,9 +8,9 @@ import io
 import fugashi
 from faster_whisper import WhisperModel
 import base64
-from services.gemini_api_service import get_pronunciation_feedback_from_gemini
+from services.external.gemini_api_service import get_pronunciation_feedback_from_gemini
 from utils.shadowing_helpers import transcribe_audio, analyze_pitch_accent, convert_to_katakana, calculate_cer, get_caption_error
-from services.youtube_api_service import download_audio
+from services.external.youtube_api_service import download_audio
 
 router = APIRouter(prefix="/shadowing")
 

@@ -21,9 +21,9 @@ from faster_whisper import WhisperModel
 # Adjust this import to wherever you placed the reconstruction module.
 from yt_dlp import YoutubeDL
 
-from services.whisper_service import get_model, transcribe_words
-from services.youtube_api_service import download_audio
-from utils.whisper_sentence_reconstruct import reconstruct_sentences_from_whisper
+from services.external.whisper_service import get_model, transcribe_words
+from services.external.youtube_api_service import download_audio
+from utils.sentence_reconstruct import reconstruct_sentences_from_whisper
 
 # =====================================================================
 # Model singleton — load ONCE, reuse across calls.

@@ -1,4 +1,4 @@
-from services.youtube_api_service import fetch_caption_tracks, fetch_video_metadata
+from services.external.youtube_api_service import fetch_caption_tracks, fetch_video_metadata
 from utils.video_validation_helpers import (
     check_video_japanese_suitability,
     extract_video_id,

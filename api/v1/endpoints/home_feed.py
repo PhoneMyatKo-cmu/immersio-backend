@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from db.base import get_db
 from models.video import DifficultyLevel
-from services.video_services import get_videos, get_videos_by_difficulty_level
+from services.video.video_services import get_videos, get_videos_by_difficulty_level
 
 router = APIRouter(prefix="/feed")
 

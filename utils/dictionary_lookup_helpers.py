@@ -7,7 +7,7 @@ from functools import lru_cache
 from cutlet import Cutlet
 from fugashi import Tagger
 
-from services.google_translate_service import fall_back_google_translate
+from services.external.google_translate_service import google_translate
 
 LEMMA_NORMALIZE = {
     "為る": "する",
@@ -199,7 +199,7 @@ def lookup_word_full(token: tuple) -> dict:
         meanings = [
             {
                 "pos": "web_translate",
-                "meanings": fall_back_google_translate(surface_form),
+                "meanings": google_translate(surface_form),
             }
         ]
 

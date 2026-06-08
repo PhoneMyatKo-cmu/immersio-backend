@@ -4,10 +4,10 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from models.sentence import Sentence
-from services.google_translate_service import fall_back_google_translate
+from services.external.google_translate_service import google_translate
 
 
-def save_context_sentence(sentences: list, video_db_id: int, db: Session):
+def save_sentence(sentences: list, video_db_id: int, db: Session):
     for st in sentences:
         sentence = Sentence(
             video_id=video_db_id,
@@ -23,58 +23,58 @@ def save_context_sentence(sentences: list, video_db_id: int, db: Session):
     return {"number_of_sentences": number_of_sentences}
 
 
-def find_context_sentence(
-    word: str,
-    video_id: str,
-    timestamp: float,
-    db: Session,
-    time_window: float = 3.0,  # search within ±3 seconds
-) -> Optional[dict]:
-    """
-    Find the reconstructed sentence that contains this word
-    at approximately this timestamp.
-    """
-    candidates = (
-        db.query(Sentence)
-        .filter(
-            Sentence.video_id == video_id,
-            Sentence.start_time <= timestamp,
-            Sentence.end_time >= timestamp,
-            Sentence.text.contains(word),
-        )
-        .all()
-    )
+# def find_context_sentence(
+#     word: str,
+#     video_id: str,
+#     timestamp: float,
+#     db: Session,
+#     time_window: float = 3.0,  # search within ±3 seconds
+# ) -> Optional[dict]:
+#     """
+#     Find the reconstructed sentence that contains this word
+#     at approximately this timestamp.
+#     """
+#     candidates = (
+#         db.query(Sentence)
+#         .filter(
+#             Sentence.video_id == video_id,
+#             Sentence.start_time <= timestamp,
+#             Sentence.end_time >= timestamp,
+#             Sentence.text.contains(word),
+#         )
+#         .all()
+#     )
 
-    if not candidates:
-        # Widen search: maybe timing is off, just find by text
-        candidates = (
-            db.query(Sentence)
-            .filter(
-                Sentence.video_id == video_id,
-                Sentence.text.contains(word),
-            )
-            .order_by(
-                # Closest to the timestamp
-                func.abs(Sentence.start_time - timestamp)
-            )
-            .limit(3)
-            .all()
-        )
+#     if not candidates:
+#         # Widen search: maybe timing is off, just find by text
+#         candidates = (
+#             db.query(Sentence)
+#             .filter(
+#                 Sentence.video_id == video_id,
+#                 Sentence.text.contains(word),
+#             )
+#             .order_by(
+#                 # Closest to the timestamp
+#                 func.abs(Sentence.start_time - timestamp)
+#             )
+#             .limit(3)
+#             .all()
+#         )
 
-    if not candidates:
-        return None
+#     if not candidates:
+#         return None
 
-    # Pick the best match: closest timestamp that contains the word
-    best = min(candidates, key=lambda s: abs(s.start_time - timestamp))
+#     # Pick the best match: closest timestamp that contains the word
+#     best = min(candidates, key=lambda s: abs(s.start_time - timestamp))
 
-    return {
-        "id": best.id,
-        "text": best.text,
-        "translation": best.translation,
-        "start": best.start_time,
-        "end": best.end_time,
-        "sentence_index": best.sentence_index,
-    }
+#     return {
+#         "id": best.id,
+#         "text": best.text,
+#         "translation": best.translation,
+#         "start": best.start_time,
+#         "end": best.end_time,
+#         "sentence_index": best.sentence_index,
+#     }
 
 
 # def cache_translation(sentence_id: int, translation: str, db: Session):

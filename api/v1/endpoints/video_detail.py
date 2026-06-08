@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from db.base import get_db
 from schemas.video import VideoRespone
-from services.video_services import get_video_by_id
+from services.video.video_services import get_video_by_id
 
 router = APIRouter(prefix="/video")
 
