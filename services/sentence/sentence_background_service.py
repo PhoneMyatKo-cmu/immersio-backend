@@ -3,9 +3,9 @@
 import logging
 
 from db.base import SessionLocal
-from services.context_sentence_services import save_context_sentence
-from services.video_services import change_shadowing_status
-from services.yt_whisper import youtube_to_sentences
+from services.sentence.sentence_services import save_sentence
+from services.video.video_services import change_shadowing_status
+from services.sentence.sentence_construction_service import youtube_to_sentences
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +31,7 @@ def build_shadowing_sentences_with_whisper_background_task(
         )
 
         logger.info(f"[shadowing] video_id={video_id} - Saving sentences to DB...")
-        save_context_sentence(sentences, video_id, db)
+        save_sentence(sentences, video_id, db)
 
         logger.info(f"[shadowing] video_id={video_id} - Marking as shadowing ready...")
         change_shadowing_status(video_id, db)

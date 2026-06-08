@@ -8,8 +8,9 @@ import io
 import fugashi
 from faster_whisper import WhisperModel
 import base64
-from services.gemini_api_service import get_pronunciation_feedback_from_gemini
-from utils.shadowing_helpers import download_youtube_audio, transcribe_audio, analyze_pitch_accent, convert_to_katakana, calculate_cer, get_caption_error
+from services.external.gemini_api_service import get_pronunciation_feedback_from_gemini
+from utils.shadowing_helpers import transcribe_audio, analyze_pitch_accent, convert_to_katakana, calculate_cer, get_caption_error
+from services.external.youtube_api_service import download_audio
 
 router = APIRouter(prefix="/shadowing")
 
@@ -34,16 +35,16 @@ def pronunciation_score(db: Session = Depends(get_db),
     print(f"Caption error: {caption_error}")
 
     # Download reference audio
-    if video_id and Path(f"temp_audios/{video_id}_audio.wav").exists() == False:
+    if video_id and Path(f"temp_audios/{video_id}.wav").exists() == False:
         print(f"Downloading audio for video ID: {video_id}")
-        download_youtube_audio(f"https://www.youtube.com/watch?v={video_id}", f"temp_audios/{video_id}_audio")
+        download_audio(video_id, "temp_audios", extract_wav=True)
 
     with open(f'temp_audios/uploaded_{file.filename}', 'wb') as f:
         audio.seek(0)
         f.write(audio.read())
     # Analyze pitch accent
     print(f"Analyzing pitch accent for video ID: {video_id}")
-    pitch_result = analyze_pitch_accent(f"temp_audios/{video_id}_audio.wav", f"temp_audios/uploaded_{file.filename}", start_time=start_time, end_time=end_time)
+    pitch_result = analyze_pitch_accent(f"temp_audios/{video_id}.wav", f"temp_audios/uploaded_{file.filename}", start_time=start_time, end_time=end_time)
     print(f"Pitch score: {pitch_result['score']}")
     # Delete temporary audio files
     Path(f"temp_audios/uploaded_{file.filename}").unlink(missing_ok=True)

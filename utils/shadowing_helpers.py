@@ -10,12 +10,13 @@ from scipy.spatial.distance import euclidean
 import matplotlib.pyplot as plt
 from yt_dlp import YoutubeDL
 
-model = WhisperModel("medium", device='cuda' if torch.cuda.is_available() else 'cpu', compute_type="float16" if torch.cuda.is_available() else "int8")
+from services.external.whisper_service import get_model, transcribe_words
+
 tagger = fugashi.Tagger()
 
 def transcribe_audio(file):
     # Transcribe the audio
-    seg, _ = model.transcribe(file, language='ja')
+    seg = transcribe_words(file, get_model("medium"), language="ja", vad_filter=True, word_timestamps=False)
     text = ''.join([s.text for s in seg])
     # Convert the transcription to katakana using fugashi
     words = convert_to_katakana(text)
@@ -166,16 +167,16 @@ def score_accent(normalized_distance: float) -> dict:
 
     return {"grade": grade, "feedback": feedback, "score": round(score, 4)}
 
-def download_youtube_audio(youtube_url: str, output_path: str):
-    ydl_opts = {
-        'format': 'bestaudio/best',
-        'outtmpl': output_path,
-        'postprocessors': [{
-            'key': 'FFmpegExtractAudio',
-            'preferredcodec': 'wav',
-            'preferredquality': '192',
-        }],
-        'quiet': True,
-    }
-    with YoutubeDL(ydl_opts) as ydl:
-        ydl.download([youtube_url])
+# def download_youtube_audio(youtube_url: str, output_path: str):
+#     ydl_opts = {
+#         'format': 'bestaudio/best',
+#         'outtmpl': output_path,
+#         'postprocessors': [{
+#             'key': 'FFmpegExtractAudio',
+#             'preferredcodec': 'wav',
+#             'preferredquality': '192',
+#         }],
+#         'quiet': True,
+#     }
+#     with YoutubeDL(ydl_opts) as ydl:
+#         ydl.download([youtube_url])

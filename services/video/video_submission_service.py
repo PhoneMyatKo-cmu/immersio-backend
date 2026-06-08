@@ -2,28 +2,27 @@ from fastapi import BackgroundTasks, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from services.caption_services import save_tokenized_captions
-from services.context_sentence_services import save_context_sentence
-from services.shadowing_sentence_background_service import (
+from services.caption.caption_services import save_tokenized_captions
+from services.sentence.sentence_services import save_sentence
+from services.sentence.sentence_background_service import (
     build_shadowing_sentences_with_whisper_background_task,
 )
-from services.video_background_service import process_video_vocab_background
-from services.video_services import (
+from services.video.video_background_service import process_video_vocab_background
+from services.video.video_services import (
     change_shadowing_status,
     check_video_exists,
     get_video_by_youtube_video_id,
     save_video,
 )
-from services.video_validation_service import validate_video
-from services.vocab_services import save_vocabularies
-from services.youtube_api_service import fetch_raw_captions
-from services.yt_whisper import youtube_to_sentences
+from services.video.video_validation_service import validate_video
+from services.vocab.vocab_services import save_vocabularies
+from services.external.youtube_api_service import fetch_raw_captions
+from services.sentence.sentence_construction_service import youtube_to_sentences
 from utils.captions_helpers import (
     get_line_level_captions,
     process_captions,
 )
-from utils.sentence_reconstruction import (
-    reconstruct_sentence_for_auto_generate,
+from utils.sentence_reconstruct import (
     reconstruct_sentence_for_manual,
 )
 
@@ -109,7 +108,7 @@ def submit_video_for_processing(
             sentences = reconstruct_sentence_for_manual(processed_captions)
             # save_shadowing_sentences(sentences, saved_video_id, db)
 
-            save_context_sentence(sentences, saved_video_id, db)
+            save_sentence(sentences, saved_video_id, db)
             # mark_shadowing_ready(saved_video_id, db)
             change_shadowing_status(saved_video_id, db)
         else:

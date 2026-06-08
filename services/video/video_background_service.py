@@ -1,8 +1,8 @@
 import logging
 
 from db.base import SessionLocal
-from services.video_services import save_difficulty
-from services.video_vocab_service import save_video_vocab_profile
+from services.video.video_services import save_difficulty
+from services.video_vocab.video_vocab_service import save_video_vocab_profile
 
 logger = logging.getLogger(__name__)
 

@@ -592,3 +592,14 @@ def reconstruct_sentences_from_whisper(segments, shadow: bool = False) -> List[d
     """Public API: list of dicts in the application's expected format."""
     units = reconstruct_from_whisper(segments, shadow=shadow)
     return [to_dict(u, idx) for idx, u in enumerate(units)]
+
+def reconstruct_sentence_for_manual(captions:list[dict])-> List[dict]:
+    return [
+        {
+            "text":caption["text"],
+            "start":round(caption["start"],3),
+            "end":round(caption["end"],3),
+            "duration":round(caption["duration"],3),
+            "sentence_index":caption["index"]
+        } for caption in captions
+    ]

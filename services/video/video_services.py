@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 from db.base import SessionLocal
 from models.video import DifficultyLevel, Video
-from services.video_vocab_service import get_video_vocab_with_tiers
+from services.video_vocab.video_vocab_service import get_video_vocab_with_tiers
 from utils.video_validation_helpers import compute_difficulty
 
 

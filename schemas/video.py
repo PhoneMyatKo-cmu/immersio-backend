@@ -1,7 +1,7 @@
 from pydantic import BaseModel, ConfigDict
 
 
-class VideoRespone(BaseModel):
+class VideoResponse(BaseModel):
     youtube_video_id: str
     title: str
     thumbnail_url: str

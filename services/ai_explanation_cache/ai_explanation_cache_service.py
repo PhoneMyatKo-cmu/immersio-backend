@@ -7,7 +7,7 @@ from schemas.vocab_context import (
     ContextResponse,
     WordExplanationResponse,
 )
-from services.gemini_api_service import get_context_explanation_from_gemini
+from services.external.gemini_api_service import get_context_explanation_from_gemini
 
 
 class ServiceUnavailableError(Exception):
