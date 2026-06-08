@@ -14,10 +14,10 @@ class ServiceUnavailableError(Exception):
     pass
 
 
-def check_cache(vocab_id: int, sentence_id: int, db: Session):
+def check_cache(vocab_id: int, caption_id: int, db: Session):
     stmt = select(AI_Explanation_Cache).where(
         AI_Explanation_Cache.vocab_id == vocab_id,
-        AI_Explanation_Cache.sentence_id == sentence_id,
+        AI_Explanation_Cache.caption_id == caption_id,
     )
 
     row = db.execute(stmt).scalars().first()
@@ -26,14 +26,14 @@ def check_cache(vocab_id: int, sentence_id: int, db: Session):
 
 def cache_explanation_deprecated(
     vocab_id: int,
-    sentence_id: int,
+    caption_id: int,
     word_explanation: WordExplanationResponse,
     db: Session,
 ):
 
     saved_explanation = AI_Explanation_Cache(
         vocab_id=vocab_id,
-        sentence_id=sentence_id,
+        caption_id=caption_id,
         explanation=word_explanation.explanation,
         examples=word_explanation.examples,
         confidence_level=word_explanation.confidence,
@@ -46,13 +46,13 @@ def cache_explanation_deprecated(
 
 def cache_explanation(
     vocab_id: int,
-    sentence_id: int,
+    caption_id: int,
     word_explanation: WordExplanationResponse,
     db: Session,
 ):
     saved_explanation = AI_Explanation_Cache(
         vocab_id=vocab_id,
-        sentence_id=sentence_id,
+        caption_id=caption_id,
         explanation=word_explanation.explanation,
         # Convert list of Pydantic models to list of dicts
         examples=[ex.model_dump() for ex in word_explanation.examples],
@@ -66,7 +66,7 @@ def cache_explanation(
 
 def get_context_explanation_from_ai(contextRequest: ContextRequest, db: Session):
     cached_explanation = check_cache(
-        contextRequest.vocab_id, contextRequest.sentence_id, db
+        contextRequest.vocab_id, contextRequest.caption_id, db
     )
 
     if cached_explanation:
@@ -85,7 +85,7 @@ def get_context_explanation_from_ai(contextRequest: ContextRequest, db: Session)
             surface_form=contextRequest.surface_form,
             pos=contextRequest.pos,
             meanings=contextRequest.meanings,
-            context_sentence=contextRequest.context_sentence,
+            context_sentence=contextRequest.context_caption,
         )
 
     except Exception as e:
@@ -97,7 +97,7 @@ def get_context_explanation_from_ai(contextRequest: ContextRequest, db: Session)
     try:
         cache_explanation(
             vocab_id=contextRequest.vocab_id,
-            sentence_id=contextRequest.sentence_id,
+            caption_id=contextRequest.caption_id,
             word_explanation=explanation,
             db=db,
         )

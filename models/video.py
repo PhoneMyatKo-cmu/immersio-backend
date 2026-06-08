@@ -1,7 +1,7 @@
 import enum
 from datetime import datetime
 
-from sqlalchemy import JSON, DateTime, Enum, Integer, String
+from sqlalchemy import JSON, Boolean, DateTime, Enum, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from db.base import Base
@@ -38,6 +38,10 @@ class Video(Base):
     )
 
     duration_seconds: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    is_shadowing_ready: Mapped[bool] = mapped_column(
+        Boolean, default=False, nullable=False
+    )
 
     processed_captions = relationship(
         "ProcessedCaption", back_populates="video", cascade="all, delete-orphan"

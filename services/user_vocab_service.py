@@ -19,7 +19,7 @@ def save_vocab_to_library(saveVocab: UserVocabSave, user_id: int, db: Session):
         user_id=user_id,
         vocab_id=saveVocab.vocab_id,
         video_id=saveVocab.video_id,
-        sentence_id=saveVocab.sentence_id,
+        caption_id=saveVocab.caption_id,
         timestamp=saveVocab.timestamp,
     )
 

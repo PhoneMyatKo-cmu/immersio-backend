@@ -5,11 +5,11 @@ from pydantic import BaseModel, Field
 
 class ContextRequest(BaseModel):
     vocab_id: int
-    sentence_id: int
+    caption_id: int
     surface_form: str
     pos: list
     meanings: list
-    context_sentence: str
+    context_caption: str
 
 
 class ContextResponse(BaseModel):
@@ -45,7 +45,7 @@ class WordExplanationResponse(BaseModel):
 class VocabRequest(BaseModel):
     vocab_surface_form: str
     video_id: int
-    timestamp: float
+    caption: dict
 
 
 class VocabResponse(BaseModel):
@@ -60,5 +60,5 @@ class VocabResponse(BaseModel):
 class UserVocabSave(BaseModel):
     vocab_id: int
     video_id: int
-    sentence_id: int
+    caption_id: int
     timestamp: float

@@ -7,10 +7,11 @@ from api.v1.endpoints import (
     ai_explanation,
     caption,
     home_feed,
+    sentence,
+    shadowing,
     user_add_video,
     video_detail,
     vocab,
-    shadowing,
 )
 from api.v1.endpoints.users import router as user_router
 from db.base import Base, engine
@@ -61,3 +62,4 @@ app.include_router(ai_explanation.router)
 
 app.include_router(home_feed.router)
 app.include_router(shadowing.router)
+app.include_router(sentence.router)
