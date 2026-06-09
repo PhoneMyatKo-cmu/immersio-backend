@@ -541,7 +541,7 @@ def resolve_overlaps(units: List[MeaningUnit]) -> List[MeaningUnit]:
 
 
 def apply_shadow_padding(
-    units: List[MeaningUnit], lead_in: float = 0.05, lead_out: float = 0.10
+    units: List[MeaningUnit], lead_in: float = 0.25, lead_out: float = -0.09
 ) -> List[MeaningUnit]:
     """
     Optional small comfort margin for the shadowing path. Because timing is
@@ -593,13 +593,15 @@ def reconstruct_sentences_from_whisper(segments, shadow: bool = False) -> List[d
     units = reconstruct_from_whisper(segments, shadow=shadow)
     return [to_dict(u, idx) for idx, u in enumerate(units)]
 
-def reconstruct_sentence_for_manual(captions:list[dict])-> List[dict]:
+
+def reconstruct_sentence_for_manual(captions: list[dict]) -> List[dict]:
     return [
         {
-            "text":caption["text"],
-            "start":round(caption["start"],3),
-            "end":round(caption["end"],3),
-            "duration":round(caption["duration"],3),
-            "sentence_index":caption["index"]
-        } for caption in captions
+            "text": caption["text"],
+            "start": round(caption["start"], 3),
+            "end": round(caption["end"], 3),
+            "duration": round(caption["duration"], 3),
+            "sentence_index": caption["index"],
+        }
+        for caption in captions
     ]
