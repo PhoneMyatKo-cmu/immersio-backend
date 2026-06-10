@@ -50,6 +50,7 @@ def get_vocabulary(
         surface_form=vocab.japanese_form,
         pronunciation=vocab.reading,
         meanings=vocab.meanings,
+        estimated_level=vocab.estimated_level,
         context_sentence=context_sentence,
         sentence_translation=context_sentence_translation,
     )
