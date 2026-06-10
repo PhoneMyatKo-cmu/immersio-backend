@@ -1,7 +1,6 @@
 import logging
 
 from db.base import SessionLocal
-from services.video.video_services import save_difficulty
 from services.video_vocab.video_vocab_service import save_video_vocab_profile
 
 logger = logging.getLogger(__name__)
@@ -22,11 +21,6 @@ def process_video_vocab_background(video_id: int, surface_forms: list[str]) -> N
         save_video_vocab_profile(
             video_id=video_id,
             surface_forms=surface_forms,
-            db=db,
-        )
-
-        save_difficulty(
-            video_id=video_id,
             db=db,
         )
 

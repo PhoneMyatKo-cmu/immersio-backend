@@ -59,29 +59,29 @@ def check_video_japanese_suitability(metadata: dict, caption_tracks: list[dict])
     }
 
 
-def compute_difficulty(video_vocab: list[dict]) -> str:
-    """
-    Returns a single difficulty label: beginner, intermediate, advanced, unknown.
-    """
-    tier_counts = {"N5": 0, "N4": 0, "N3": 0, "N2": 0, "N1": 0}
-    total = 0
+# def compute_difficulty(video_vocab: list[dict]) -> str:
+#     """
+#     Returns a single difficulty label: beginner, intermediate, advanced, unknown.
+#     """
+#     tier_counts = {"N5": 0, "N4": 0, "N3": 0, "N2": 0, "N1": 0}
+#     total = 0
 
-    for word in video_vocab:
-        tier = word.get("jlpt_tier", "UNKNOWN")
-        freq = word.get("frequency", 1)
-        if tier in tier_counts:
-            tier_counts[tier] += freq
-            total += freq
+#     for word in video_vocab:
+#         tier = word.get("jlpt_tier", "UNKNOWN")
+#         freq = word.get("frequency", 1)
+#         if tier in tier_counts:
+#             tier_counts[tier] += freq
+#             total += freq
 
-    if total == 0:
-        return "unknown"
+#     if total == 0:
+#         return "unknown"
 
-    beginner_ratio = (tier_counts["N5"] + tier_counts["N4"]) / total
-    advanced_ratio = (tier_counts["N2"] + tier_counts["N1"]) / total
+#     beginner_ratio = (tier_counts["N5"] + tier_counts["N4"]) / total
+#     advanced_ratio = (tier_counts["N2"] + tier_counts["N1"]) / total
 
-    if beginner_ratio >= 0.6:
-        return "beginner"
-    elif advanced_ratio >= 0.4:
-        return "advanced"
-    else:
-        return "intermediate"
+#     if beginner_ratio >= 0.6:
+#         return "beginner"
+#     elif advanced_ratio >= 0.4:
+#         return "advanced"
+#     else:
+#         return "intermediate"
