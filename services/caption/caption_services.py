@@ -49,9 +49,9 @@ def cache_translation(caption_id: int, translation: str, db: Session):
     db.commit()
 
 
-def get_sentence_translation(context_sentence: dict, db: Session) -> str:
+def get_caption_translation(context_sentence: dict, db: Session) -> str:
 
-    caption_translation = get_caption_translation(context_sentence["id"], db)
+    caption_translation = get_translation(context_sentence["id"], db)
     if caption_translation:
         print("Translation cache")
         return caption_translation
@@ -59,18 +59,16 @@ def get_sentence_translation(context_sentence: dict, db: Session) -> str:
     else:
         try:
             print("Translation cache miss")
-            context_sentence_translation = google_translate(
-                context_sentence["text"]
-            )[0]
-            cache_translation(context_sentence["id"], context_sentence_translation, db)
-            return context_sentence_translation
+            caption_translation = google_translate(context_sentence["text"])[0]
+            cache_translation(context_sentence["id"], caption_translation, db)
+            return caption_translation
 
         except Exception as e:
             print(e)
             return "Translation service currently unavailable!"
 
 
-def get_caption_translation(caption_id: int, db: Session):
+def get_translation(caption_id: int, db: Session):
     caption = db.scalars(
         select(ProcessedCaption).where(ProcessedCaption.id == caption_id)
     ).first()
