@@ -31,12 +31,15 @@ def save_video(meta_data: dict, suitability: dict, db: Session):
             ).total_seconds(),
         )
         db.add(video)
+        db.flush()
+        video_id = video.id
         db.commit()
+
     except Exception as e:
         print(e)
         raise e
 
-    return {"title": meta_data["title"]}
+    return {"title": meta_data["title"], "video_id": video_id}
 
 
 def save_vocabulary_profile():
