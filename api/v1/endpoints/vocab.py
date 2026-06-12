@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from db.base import get_db
@@ -70,9 +71,13 @@ def save_vocab_for_user(
     user_id = current_user.id
     try:
         save_vocab_to_library(saveVocab, user_id, db)
+    except IntegrityError:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="Vocab already saved"
+        )
     except Exception:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Try again later!"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Server error, please try again later"
         )
 
     return {"message": "success"}
