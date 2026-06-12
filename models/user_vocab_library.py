@@ -13,8 +13,8 @@ class SRSState(str, enum.Enum):
     mastered = "mastered"
 
 
-class UserVocabLibrary(Base):
-    __tablename__ = "user_vocab_library"
+class UserSavedVocabulary(Base):
+    __tablename__ = "user_saved_vocabulary"
 
     __table_args__ = (UniqueConstraint("user_id", "vocab_id", name="uq_user_vocab"),)
 
@@ -33,7 +33,7 @@ class UserVocabLibrary(Base):
     )
 
     caption_id: Mapped[int] = mapped_column(
-        ForeignKey("processed_captions.id", ondelete="SET NULL"),
+        ForeignKey("captions.id", ondelete="SET NULL"),
         nullable=True,
         index=True,
     )
@@ -57,7 +57,7 @@ class UserVocabLibrary(Base):
     )
 
     # Optional relationships (useful for ORM navigation)
-    user = relationship("User", backref="vocab_libraries")
-    vocab = relationship("Vocabulary", backref="user_entries")
-    video = relationship("Video", backref="vocab_libraries")
-    caption = relationship("ProcessedCaption", backref="vocab_libraries")
+    user = relationship("User", backref="saved_vocabularies")
+    vocab = relationship("Vocabulary", backref="user_saves")
+    video = relationship("Video", backref="saved_vocabularies")
+    caption = relationship("Caption", backref="saved_vocabularies")

@@ -3,7 +3,7 @@ import logging
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from models.video_vocab_profile import VideoVocabProfile
+from models.video_vocab_profile import VideoVocabulary
 from models.vocab import Vocabulary
 
 logger = logging.getLogger(__name__)
@@ -36,7 +36,7 @@ def save_video_vocab_profile(
             continue  # word not in global vocab — skip
 
         existing = (
-            db.query(VideoVocabProfile)
+            db.query(VideoVocabulary)
             .filter_by(video_id=video_id, vocab_id=vocab_id)
             .first()
         )
@@ -45,7 +45,7 @@ def save_video_vocab_profile(
             existing.frequency += frequency
         else:
             db.add(
-                VideoVocabProfile(
+                VideoVocabulary(
                     video_id=video_id, vocab_id=vocab_id, frequency=frequency
                 )
             )
@@ -58,10 +58,10 @@ def get_video_vocab_with_tiers(video_id: int, db: Session) -> list[dict]:
         select(
             Vocabulary.japanese_form,
             Vocabulary.estimated_level,
-            VideoVocabProfile.frequency,
+            VideoVocabulary.frequency,
         )
-        .join(VideoVocabProfile, VideoVocabProfile.vocab_id == Vocabulary.id)
-        .where(VideoVocabProfile.video_id == video_id)
+        .join(VideoVocabulary, VideoVocabulary.vocab_id == Vocabulary.id)
+        .where(VideoVocabulary.video_id == video_id)
     ).all()
 
     return [

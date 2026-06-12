@@ -2,14 +2,14 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from db.base import get_db
-from models.processed_caption import ProcessedCaption
+from models.processed_caption import Caption
 from services.external.google_translate_service import google_translate
 
 
 def save_tokenized_captions(tokenized_captions: list[dict], video_id: int, db: Session):
     try:
         for caption in tokenized_captions:
-            tokenized_caption = ProcessedCaption(
+            tokenized_caption = Caption(
                 video_id=video_id,
                 caption_index=caption["index"],
                 tokens=caption["tokens"],
@@ -32,7 +32,7 @@ def save_tokenized_captions(tokenized_captions: list[dict], video_id: int, db: S
 def get_captions_by_video_id(video_id: int, db: Session):
     captions = []
     try:
-        stmt = select(ProcessedCaption).where(ProcessedCaption.video_id == video_id)
+        stmt = select(Caption).where(Caption.video_id == video_id)
         captions = db.execute(stmt).scalars().all()
     except Exception as e:
         print("DB error")
@@ -42,7 +42,7 @@ def get_captions_by_video_id(video_id: int, db: Session):
 
 def cache_translation(caption_id: int, translation: str, db: Session):
     caption = db.scalars(
-        select(ProcessedCaption).where(ProcessedCaption.id == caption_id)
+        select(Caption).where(Caption.id == caption_id)
     ).first()
     caption.translation = translation
     db.add(caption)
@@ -70,6 +70,6 @@ def get_caption_translation(context_sentence: dict, db: Session) -> str:
 
 def get_translation(caption_id: int, db: Session):
     caption = db.scalars(
-        select(ProcessedCaption).where(ProcessedCaption.id == caption_id)
+        select(Caption).where(Caption.id == caption_id)
     ).first()
     return caption.translation

@@ -3,13 +3,13 @@ from typing import Optional
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from models.sentence import Sentence
+from models.sentence import ShadowingSentence
 from services.external.google_translate_service import google_translate
 
 
 def save_sentence(sentences: list, video_db_id: int, db: Session):
     for st in sentences:
-        sentence = Sentence(
+        sentence = ShadowingSentence(
             video_id=video_db_id,
             sentence_index=st["sentence_index"],
             text=st["text"],
@@ -106,6 +106,6 @@ def save_sentence(sentences: list, video_db_id: int, db: Session):
 
 def get_sentence_by_video_id(video_id: int, db: Session):
     results = db.scalars(
-        select(Sentence).where(Sentence.video_id == video_id)
+        select(ShadowingSentence).where(ShadowingSentence.video_id == video_id)
     ).fetchall()
     return results

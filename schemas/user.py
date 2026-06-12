@@ -2,7 +2,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
-from models.user import EstimatedLevel
+from models.user import EstimatedLevel, UserRole
 
 
 class UserCreate(BaseModel):
@@ -11,6 +11,7 @@ class UserCreate(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8, max_length=128)
     estimated_level: EstimatedLevel = EstimatedLevel.beginner
+    role: UserRole = UserRole.LEARNER
 
     @field_validator("password")
     @classmethod
@@ -38,6 +39,7 @@ class UserRead(BaseModel):
     last_name: str
     email: EmailStr
     estimated_level: EstimatedLevel
+    role: UserRole
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
@@ -46,6 +48,7 @@ class UserUpdate(BaseModel):
     first_name: str | None
     last_name: str | None
     estimated_level: EstimatedLevel | None
+    role: UserRole | None
     email: EmailStr | None
 
 class UserUpdatePassword(BaseModel):
