@@ -10,6 +10,8 @@ from faster_whisper import WhisperModel
 from sqlalchemy.orm import Session
 
 from db.base import get_db
+from schemas.user import UserRead
+from services.auth.authentication_service import get_current_user
 from services.external.gemini_api_service import get_pronunciation_feedback_from_gemini
 from services.external.youtube_api_service import download_audio
 from utils.shadowing_helpers import (
@@ -87,6 +89,7 @@ def explain_pronunciation_score(
     user_pitch: list[float] = Body(...),
     reference_pitch: list[float] = Body(...),
     caption: str = Body(...),
+    current_user: UserRead = Depends(get_current_user),
 ):
     try:
         explanation = get_pronunciation_feedback_from_gemini(
