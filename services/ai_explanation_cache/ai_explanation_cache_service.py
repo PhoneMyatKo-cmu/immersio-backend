@@ -1,7 +1,7 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from models.ai_explanation_cache import AI_Explanation_Cache
+from models.ai_explanation_cache import ContextualExplanation
 from schemas.vocab_context import (
     ContextRequest,
     ContextResponse,
@@ -15,9 +15,9 @@ class ServiceUnavailableError(Exception):
 
 
 def check_cache(vocab_id: int, caption_id: int, db: Session):
-    stmt = select(AI_Explanation_Cache).where(
-        AI_Explanation_Cache.vocab_id == vocab_id,
-        AI_Explanation_Cache.caption_id == caption_id,
+    stmt = select(ContextualExplanation).where(
+        ContextualExplanation.vocab_id == vocab_id,
+        ContextualExplanation.caption_id == caption_id,
     )
 
     row = db.execute(stmt).scalars().first()
@@ -31,7 +31,7 @@ def cache_explanation_deprecated(
     db: Session,
 ):
 
-    saved_explanation = AI_Explanation_Cache(
+    saved_explanation = ContextualExplanation(
         vocab_id=vocab_id,
         caption_id=caption_id,
         explanation=word_explanation.explanation,
@@ -50,7 +50,7 @@ def cache_explanation(
     word_explanation: WordExplanationResponse,
     db: Session,
 ):
-    saved_explanation = AI_Explanation_Cache(
+    saved_explanation = ContextualExplanation(
         vocab_id=vocab_id,
         caption_id=caption_id,
         explanation=word_explanation.explanation,

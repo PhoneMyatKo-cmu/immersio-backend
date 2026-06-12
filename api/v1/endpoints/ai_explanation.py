@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from services.auth.authentication_service import get_current_user
 from db.base import get_db
 from schemas.user import UserRead
 from schemas.vocab_context import ContextRequest, ContextResponse
@@ -9,6 +8,7 @@ from services.ai_explanation_cache.ai_explanation_cache_service import (
     ServiceUnavailableError,
     get_context_explanation_from_ai,
 )
+from services.auth.authentication_service import get_current_user
 
 router = APIRouter(prefix="/context-explanation")
 
@@ -29,5 +29,5 @@ def get_ai_explanation(
         return explanation
     except ServiceUnavailableError as e:
         raise HTTPException(status_code=503, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=404, detail="Not Found")
+    # except Exception as e:
+    #     raise HTTPException(status_code=404, detail="Not Found")

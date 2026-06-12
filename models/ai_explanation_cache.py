@@ -13,8 +13,8 @@ class ConfidenceLevel(str, enum.Enum):
     low = "low"
 
 
-class AI_Explanation_Cache(Base):
-    __tablename__ = "ai_explanation_cache"
+class ContextualExplanation(Base):
+    __tablename__ = "contextual_explanations"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
 
@@ -23,7 +23,7 @@ class AI_Explanation_Cache(Base):
     )
 
     caption_id: Mapped[int] = mapped_column(
-        ForeignKey("processed_captions.id", ondelete="CASCADE"),
+        ForeignKey("captions.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )

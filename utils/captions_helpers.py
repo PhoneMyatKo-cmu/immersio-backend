@@ -4,12 +4,8 @@ from copy import deepcopy
 
 from fugashi import Tagger
 
-CONTENT_POS = {"名詞", "動詞", "形容詞", "形状詞", "副詞", "感動詞", "代名詞"}
-EXCLUDE_POS_DETAIL = {"非自立", "代名詞", "数"}
-_LONE_KANA = re.compile(r"^[ぁ-んァ-ヴーゝゞ々]$")
-NUMERAL_POS = "数詞"
-DEPENDENT_POS = "非自立可能"  # dependent forms: こと, もの, ため, いる
-FILLER = "数詞", "フィラー"
+# Punctuation marks to exclude from word lookups
+PUNCTUATION = {"。", "．", "！", "？", "!", "?", "…", "、", ","}
 
 tagger = Tagger()
 
@@ -163,31 +159,23 @@ def is_japanese(text):
     return re.search(r"[\u3040-\u30ff\u4e00-\u9fff]", text) is not None
 
 
-def is_content_word_deprecated(token_features):
-    token_base_form = token_features.lemma if token_features.lemma != "*" else None
-    token_pos = token_features.pos1
-    token_pos_detail = token_features.pos2
-    if token_pos not in CONTENT_POS:
-        return False
-    if token_pos_detail in EXCLUDE_POS_DETAIL:
-        return False
-    if not token_base_form or len(token_base_form) < 2:
-        return False
-    return True
-
-
 def is_content_word(word):
-    f = word.feature
+    """
+    Determines if a word should be lookup-able by users.
+
+    Returns False only for:
+    - Non-Japanese text
+    - Punctuation marks
+
+    All other Japanese words (particles, auxiliaries, etc.) return True
+    to allow learners to look up any word they encounter.
+    """
     if not is_japanese(word.surface):
         return False
-    if f.pos1 not in CONTENT_POS:
+
+    if word.surface in PUNCTUATION:
         return False
-    if f.pos2 == NUMERAL_POS:
-        return False
-    if f.pos2 == FILLER:
-        return False
-    if _LONE_KANA.match(word.surface):
-        return False
+
     return True
 
 

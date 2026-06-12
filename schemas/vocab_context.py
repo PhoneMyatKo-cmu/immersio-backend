@@ -53,6 +53,7 @@ class VocabResponse(BaseModel):
     surface_form: str
     pronunciation: str
     meanings: list[dict]
+    estimated_level: str
     context_sentence: dict | None
     sentence_translation: str
 

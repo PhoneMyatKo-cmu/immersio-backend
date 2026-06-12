@@ -4,8 +4,8 @@ from sqlalchemy.orm import Mapped, mapped_column
 from db.base import Base
 
 
-class VideoVocabProfile(Base):
-    __tablename__ = "video_vocab_profile"
+class VideoVocabulary(Base):
+    __tablename__ = "video_vocabulary"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     video_id: Mapped[int] = mapped_column(

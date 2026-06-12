@@ -12,6 +12,11 @@ class EstimatedLevel(str, enum.Enum):
     advanced = "advanced"
 
 
+class UserRole(str, enum.Enum):
+    ADMIN = "ADMIN"
+    LEARNER = "LEARNER"
+
+
 class User(Base):
     __tablename__ = "users"
 
@@ -43,6 +48,12 @@ class User(Base):
         Enum(EstimatedLevel, name="estimated_level_enum"),
         nullable=False,
         default=EstimatedLevel.beginner
+    )
+
+    role: Mapped[UserRole] = mapped_column(
+        Enum(UserRole, name="user_role_enum"),
+        nullable=False,
+        default=UserRole.LEARNER
     )
 
     created_at: Mapped[datetime] = mapped_column(

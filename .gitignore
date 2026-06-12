@@ -43,3 +43,11 @@ audio.mp3
 test_faster_whisper.ipynb
 temp_audios/*
 tests/test_video_submission_service.py
+method_description.md
+docs/~$st_plan.docx
+docs/architecture.md
+docs/sdd_method_descriptions.docx
+docs/sdd_method_descriptions.md
+docs/sdd_method_reference.md
+docs/test_plan.docx
+docs/test_plan.md

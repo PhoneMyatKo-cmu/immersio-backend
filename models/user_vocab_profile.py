@@ -11,8 +11,8 @@ class VocabStatus(str, enum.Enum):
     know = "KNOW"
 
 
-class UserVocabProfile(Base):
-    __tablename__ = "user_vocab_profile"
+class UserVocabularyExposure(Base):
+    __tablename__ = "user_vocabulary_exposure"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
 
@@ -51,5 +51,5 @@ class UserVocabProfile(Base):
     )
 
     # optional ORM relationships
-    user = relationship("User", backref="vocab_profiles")
-    vocab = relationship("Vocabulary", backref="user_profiles")
+    user = relationship("User", backref="vocabulary_exposures")
+    vocab = relationship("Vocabulary", backref="user_exposures")

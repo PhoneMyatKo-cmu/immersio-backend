@@ -4,8 +4,8 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from db.base import Base
 
 
-class Sentence(Base):
-    __tablename__ = "sentences"
+class ShadowingSentence(Base):
+    __tablename__ = "shadowingsentences"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
 
@@ -26,4 +26,4 @@ class Sentence(Base):
     translation: Mapped[str] = mapped_column(String(1000), nullable=True)
 
     # Relationship (optional but recommended)
-    video = relationship("Video", back_populates="sentences")
+    video = relationship("Video", back_populates="shadowingsentences")

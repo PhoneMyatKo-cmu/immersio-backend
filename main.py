@@ -14,14 +14,14 @@ from api.v1.endpoints import (
 )
 from api.v1.endpoints.auth import router as user_router
 from db.base import Base, engine
-from models.ai_explanation_cache import AI_Explanation_Cache
-from models.processed_caption import ProcessedCaption
-from models.sentence import Sentence
+from models.ai_explanation_cache import ContextualExplanation
+from models.processed_caption import Caption
+from models.sentence import ShadowingSentence
 from models.user import User
-from models.user_vocab_library import UserVocabLibrary
-from models.user_vocab_profile import UserVocabProfile
+from models.user_vocab_library import UserSavedVocabulary
+from models.user_vocab_profile import UserVocabularyExposure
 from models.video import Video
-from models.video_vocab_profile import VideoVocabProfile
+from models.video_vocab_profile import VideoVocabulary
 from models.vocab import Vocabulary
 
 app = FastAPI()

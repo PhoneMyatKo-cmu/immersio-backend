@@ -1,17 +1,21 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from services.auth.authentication_service import get_current_user
 from db.base import get_db
 from schemas.user import UserRead
 from schemas.vocab_context import UserVocabSave, VocabRequest, VocabResponse
+from services.auth.authentication_service import get_current_user
 
 # from services.context_sentence_services import (
 #     find_context_sentence,
 #     get_sentence_translation,
 # )
-from services.caption.caption_services import get_sentence_translation
-from services.user_vocab.user_vocab_service import check_duplicate_vocab, save_vocab_to_library
+from services.caption.caption_services import get_caption_translation
+from services.user_vocab.user_vocab_service import (
+    check_duplicate_vocab,
+    save_vocab_to_library,
+)
 from services.vocab.vocab_services import get_vocab_by_surface_form
 
 router = APIRouter(prefix="/vocab")
@@ -40,13 +44,14 @@ def get_vocabulary(
 
     context_sentence = vocabRequest.caption
 
-    context_sentence_translation = get_sentence_translation(context_sentence, db)
+    context_sentence_translation = get_caption_translation(context_sentence, db)
 
     return VocabResponse(
         vocab_id=vocab.id,
         surface_form=vocab.japanese_form,
         pronunciation=vocab.reading,
         meanings=vocab.meanings,
+        estimated_level=vocab.estimated_level,
         context_sentence=context_sentence,
         sentence_translation=context_sentence_translation,
     )
@@ -66,9 +71,13 @@ def save_vocab_for_user(
     user_id = current_user.id
     try:
         save_vocab_to_library(saveVocab, user_id, db)
+    except IntegrityError:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="Vocab already saved"
+        )
     except Exception:
-        HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Try again later!"
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Server error, please try again later"
         )
 
     return {"message": "success"}

@@ -1,11 +1,8 @@
 import isodate
-from sqlalchemy import func, select, text, update
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
-from db.base import SessionLocal
-from models.video import DifficultyLevel, Video
-from services.video_vocab.video_vocab_service import get_video_vocab_with_tiers
-from utils.video_validation_helpers import compute_difficulty
+from models.video import Video
 
 
 def check_video_exists(youtube_video_id: str, db: Session) -> Video | None:
@@ -34,12 +31,15 @@ def save_video(meta_data: dict, suitability: dict, db: Session):
             ).total_seconds(),
         )
         db.add(video)
+        db.flush()
+        video_id = video.id
         db.commit()
+
     except Exception as e:
         print(e)
         raise e
 
-    return {"title": meta_data["title"]}
+    return {"title": meta_data["title"], "video_id": video_id}
 
 
 def save_vocabulary_profile():
@@ -64,28 +64,28 @@ def get_video_by_id(id: int, db: Session):
     return row
 
 
-def get_videos_by_difficulty_level(
-    difficulty_level: DifficultyLevel,
-    db: Session,
-    search: str,
-    page: int,
-    page_size: int,
-):
-    stmt = (
-        select(Video)
-        .where(Video.difficulty_level == difficulty_level)
-        .order_by(Video.created_at.desc())
-    )
+# def get_videos_by_difficulty_level(
+#     difficulty_level: DifficultyLevel,
+#     db: Session,
+#     search: str,
+#     page: int,
+#     page_size: int,
+# ):
+#     stmt = (
+#         select(Video)
+#         .where(Video.difficulty_level == difficulty_level)
+#         .order_by(Video.created_at.desc())
+#     )
 
-    if search:
-        stmt = stmt.where(Video.title.ilike(f"%{search}%"))
+#     if search:
+#         stmt = stmt.where(Video.title.ilike(f"%{search}%"))
 
-    rows = (
-        db.execute(stmt.limit(page_size).offset((page - 1) * page_size)).scalars().all()
-    )
+#     rows = (
+#         db.execute(stmt.limit(page_size).offset((page - 1) * page_size)).scalars().all()
+#     )
 
-    total_videos = get_total_video_count(db, stmt)
-    return rows, total_videos
+#     total_videos = get_total_video_count(db, stmt)
+#     return rows, total_videos
 
 
 def get_videos(db: Session, search: str = None, page: int = 1, page_size: int = 6):
@@ -106,21 +106,21 @@ def get_total_video_count(db: Session, stmt: select):
     return total_videos
 
 
-def save_difficulty(video_id: int, db: Session):
-    video_vocab_list = get_video_vocab_with_tiers(video_id=video_id, db=db)
-    difficulty_level = compute_difficulty(video_vocab=video_vocab_list)
+# def save_difficulty(video_id: int, db: Session):
+#     video_vocab_list = get_video_vocab_with_tiers(video_id=video_id, db=db)
+#     difficulty_level = compute_difficulty(video_vocab=video_vocab_list)
 
-    if difficulty_level == "unknown":
-        difficulty_level = DifficultyLevel.beginner
-    else:
-        difficulty_level = DifficultyLevel(difficulty_level)
+#     if difficulty_level == "unknown":
+#         difficulty_level = DifficultyLevel.beginner
+#     else:
+#         difficulty_level = DifficultyLevel(difficulty_level)
 
-    db.execute(
-        update(Video)
-        .where(Video.id == video_id)
-        .values(difficulty_level=difficulty_level)
-    )
-    db.commit()
+#     db.execute(
+#         update(Video)
+#         .where(Video.id == video_id)
+#         .values(difficulty_level=difficulty_level)
+#     )
+#     db.commit()
 
 
 def change_shadowing_status(video_id: int, db: Session) -> None:

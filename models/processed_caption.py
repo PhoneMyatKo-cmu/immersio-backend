@@ -5,8 +5,8 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from db.base import Base
 
 
-class ProcessedCaption(Base):
-    __tablename__ = "processed_captions"
+class Caption(Base):
+    __tablename__ = "captions"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
 
@@ -29,4 +29,4 @@ class ProcessedCaption(Base):
 
     translation: Mapped[str] = mapped_column(String(1000), nullable=True)
 
-    video = relationship("Video", back_populates="processed_captions")
+    video = relationship("Video", back_populates="captions")
