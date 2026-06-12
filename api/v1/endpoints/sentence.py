@@ -20,7 +20,7 @@ class SentenceListResponse(BaseModel):
 
 
 @router.get("/")
-def get_captions_by_video(
+def get_sentences_by_video(
     video_id: int, db: Session = Depends(get_db)
 ) -> list[SentenceListResponse]:
     print(video_id)
