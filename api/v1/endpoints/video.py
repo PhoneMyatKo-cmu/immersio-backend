@@ -2,9 +2,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from db.base import get_db
-from models.video import DifficultyLevel
 from schemas.video import VideoResponse
-from services.video.video_services import get_video_by_id, get_videos, get_videos_by_difficulty_level
+from services.video.video_services import (
+    get_video_by_id,
+    get_videos,
+)
 
 router = APIRouter(prefix="/video")
 
@@ -21,19 +23,19 @@ def get_home_feed(
     return videos, total_pages
 
 
-@router.get("/difficulty/{difficulty_level}")
-def get_videos_by_difficulty(
-    db: Session = Depends(get_db),
-    difficulty_level: DifficultyLevel = DifficultyLevel.beginner,
-    search: str = None,
-    page: int = 1,
-    page_size: int = 6,
-):
-    videos, total_videos = get_videos_by_difficulty_level(
-        difficulty_level, db, search, page, page_size
-    )
-    total_pages = (total_videos + page_size - 1) // page_size
-    return videos, total_pages
+# @router.get("/difficulty/{difficulty_level}")
+# def get_videos_by_difficulty(
+#     db: Session = Depends(get_db),
+#     difficulty_level: DifficultyLevel = DifficultyLevel.beginner,
+#     search: str = None,
+#     page: int = 1,
+#     page_size: int = 6,
+# ):
+#     videos, total_videos = get_videos_by_difficulty_level(
+#         difficulty_level, db, search, page, page_size
+#     )
+#     total_pages = (total_videos + page_size - 1) // page_size
+#     return videos, total_pages
 
 
 @router.get("/{id}")

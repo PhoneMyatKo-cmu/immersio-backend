@@ -1,17 +1,9 @@
-import enum
 from datetime import datetime
 
-from sqlalchemy import JSON, Boolean, DateTime, Enum, Integer, String
+from sqlalchemy import Boolean, DateTime, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from db.base import Base
-
-
-class DifficultyLevel(str, enum.Enum):
-    beginner = "beginner"
-    intermediate = "intermediate"
-    advanced = "advanced"
-    unknown = "unknown"
 
 
 class Video(Base):
@@ -27,12 +19,6 @@ class Video(Base):
 
     channel_name: Mapped[str] = mapped_column(String(255), nullable=False)
 
-    difficulty_level: Mapped[DifficultyLevel] = mapped_column(
-        Enum(DifficultyLevel, name="difficulty_level_enum"),
-        nullable=False,
-        default=DifficultyLevel.beginner,
-    )
-
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, nullable=False
     )
@@ -43,10 +29,10 @@ class Video(Base):
         Boolean, default=False, nullable=False
     )
 
-    processed_captions = relationship(
-        "ProcessedCaption", back_populates="video", cascade="all, delete-orphan"
+    captions = relationship(
+        "Caption", back_populates="video", cascade="all, delete-orphan"
     )
 
-    sentences = relationship(
-        "Sentence", back_populates="video", cascade="all, delete-orphan"
+    shadowingsentences = relationship(
+        "ShadowingSentence", back_populates="video", cascade="all, delete-orphan"
     )
