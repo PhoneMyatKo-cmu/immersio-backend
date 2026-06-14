@@ -74,8 +74,8 @@ def pronunciation_score(
         "user_katakana": user_katakana,
         "caption_katakana": caption_katakana,
         "pitch_score": pitch_result["score"],
-        "user_pitch": pitch_result["normalized_target"].tolist(),
-        "reference_pitch": pitch_result["normalized_ref"].tolist(),
+        "user_pitch": pitch_result["aligned_target"].tolist(),
+        "reference_pitch": pitch_result["aligned_ref"].tolist(),
         "caption_error": caption_error,
     }
 
