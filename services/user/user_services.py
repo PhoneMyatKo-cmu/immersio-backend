@@ -5,7 +5,6 @@ from sqlalchemy.exc import IntegrityError
 
 from models.user import User
 
-from schemas.user import UserCreate
 
 
 def save_user(user: User, db: Session) -> User:
@@ -49,6 +48,7 @@ def delete_user(user: User, db: Session):
         raise HTTPException(status_code=500, detail="Failed to delete user") from e
 
 def update_user_password(current_user: User, new_password: str, db: Session) -> User:
+    from services.auth.authentication_service import hash_password
     current_user.password_hash = hash_password(new_password)
     try:
         db.commit()
