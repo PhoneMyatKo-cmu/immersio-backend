@@ -95,6 +95,8 @@ def analyze_pitch_accent(ref_audio_path, target_audio_path, sr=22050,
         "score": score,
         "normalized_ref": normalized_ref,
         "normalized_target": normalized_target,
+        "aligned_ref": comparison["aligned_ref"],
+        "aligned_target": comparison["aligned_target"]
     }
 
 def extract_pitch(audio_path: str, sr: int = 22050, start_time: float = 0.0, end_time: float = None) -> (np.ndarray, int):
@@ -118,7 +120,7 @@ def extract_pitch(audio_path: str, sr: int = 22050, start_time: float = 0.0, end
     return f0, sr
 
 def normalize_pitch(f0: np.ndarray) -> np.ndarray:
-    voiced = f0[f0 > 0]
+    voiced = np.nan_to_num(f0, nan=0.0)
     if len(voiced) == 0:
         return f0
 
@@ -134,8 +136,6 @@ def normalize_pitch(f0: np.ndarray) -> np.ndarray:
     return normalized
 
 def compare_pitch(f0_ref: np.ndarray, f0_target: np.ndarray):
-    f0_ref = f0_ref[f0_ref > 0]
-    f0_target = f0_target[f0_target > 0]
     # Reshape to 2D — fastdtw expects (n_frames, n_features)
     ref    = f0_ref.reshape(-1, 1)
     target = f0_target.reshape(-1, 1)
@@ -145,11 +145,16 @@ def compare_pitch(f0_ref: np.ndarray, f0_target: np.ndarray):
     # Normalize by path length — longer sequences naturally accumulate more cost
     normalized_distance = distance / len(path)
 
+    aligned_ref = np.array([f0_ref[i] for i, _ in path])
+    aligned_target = np.array([f0_target[j] for _, j in path])
+
     return {
         "distance": distance,
         "normalized_distance": normalized_distance,
         "path": path,           # list of (i, j) index pairs showing alignment
         "path_length": len(path),
+        "aligned_ref": aligned_ref,
+        "aligned_target": aligned_target,
     }
 
 def score_accent(normalized_distance: float) -> dict:
