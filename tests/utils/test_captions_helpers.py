@@ -82,6 +82,7 @@ def test_unescapes_html_entities():
     assert lines[0]["text"] == "A&B"
 
 
+# Not In Test Plan
 def test_collapses_internal_whitespace():
     data = {
         "events": [
@@ -103,6 +104,7 @@ def test_converts_milliseconds_to_seconds():
     assert line["duration"] == 2.0
 
 
+# Not In test plan
 def test_deduplicates_rolling_captions():
     # prefix-growth line replaces the previous; a contained line is skipped.
     data = {
@@ -117,6 +119,7 @@ def test_deduplicates_rolling_captions():
     assert lines[0]["text"] == "これはテスト"
 
 
+# Not In Test Plan
 def test_reindexes_contiguously_after_dedup():
     data = {
         "events": [
@@ -129,6 +132,7 @@ def test_reindexes_contiguously_after_dedup():
     assert [ln["index"] for ln in lines] == [0, 1, 2]
 
 
+# Not In Test Plan
 def test_empty_events_returns_empty_list():
     assert get_line_level_captions({"events": []}) == []
     assert get_line_level_captions({}) == []
@@ -152,6 +156,7 @@ def test_clips_overlapping_timestamps_and_adds_end_duration():
     assert out[1]["duration"] == 2.0
 
 
+# Not In Test Plan
 def test_non_overlapping_fragments_unchanged():
     fragments = [
         {"text": "a", "start": 0.0, "duration": 1.0},
@@ -162,6 +167,7 @@ def test_non_overlapping_fragments_unchanged():
     assert out[0]["duration"] == 1.0
 
 
+# Not In Test Plan
 def test_normalize_does_not_mutate_input():
     fragments = [{"text": "a", "start": 0.0, "duration": 1.0}]
     normalize_captions_fragments(fragments)

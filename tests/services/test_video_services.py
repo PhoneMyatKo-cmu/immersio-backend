@@ -25,13 +25,13 @@ from sqlalchemy.pool import StaticPool
 try:
     from models.video import Video
     from services.video.video_services import (
-        save_video,
+        change_shadowing_status,
         check_video_exists,
+        get_total_video_count,
         get_video_by_id,
         get_video_by_youtube_video_id,
-        change_shadowing_status,
         get_videos,
-        get_total_video_count,
+        save_video,
     )
 except Exception as exc:  # isodate / import-chain deps missing
     pytest.skip(f"video_services unavailable: {exc}", allow_module_level=True)
@@ -42,7 +42,9 @@ pytestmark = [pytest.mark.integration, pytest.mark.video_submission]
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-def _make_video(db, youtube_video_id="dQw4w9WgXcQ", title="日本語レッスン", is_ready=False):
+def _make_video(
+    db, youtube_video_id="dQw4w9WgXcQ", title="日本語レッスン", is_ready=False
+):
     video = Video(
         youtube_video_id=youtube_video_id,
         title=title,
@@ -127,9 +129,7 @@ def test_get_videos_filters_by_search_before_paginating(service_db):
     )
     service_db.commit()
 
-    videos, total_videos = get_videos(
-        service_db, search="grammar", page=1, page_size=1
-    )
+    videos, total_videos = get_videos(service_db, search="grammar", page=1, page_size=1)
 
     assert [video.youtube_video_id for video in videos] == ["grammar-new"]
     assert total_videos == 2
@@ -195,6 +195,21 @@ def test_save_video_persists_row_and_parses_iso_duration(db_session):
     assert row.is_shadowing_ready is False  # default
 
 
+# My Test
+# def test_save_video_behave_how_on_duplicate_id(db_session):
+#     meta = {
+#         "video_id": "abc12345678",
+#         "title": "テスト動画",
+#         "thumbnail_url": "https://i.ytimg.com/vi/abc/hqdefault.jpg",
+#         "channel_name": "Channel",
+#         "duration": "PT3M",  # ISO-8601 -> 180 seconds
+#     }
+#     save_video(meta, suitability={}, db=db_session)
+#     result2 = save_video(meta, suitability={}, db=db_session)
+
+#     assert isinstance(result2["video_id"], int)
+
+
 # --- DBS-02 -----------------------------------------------------------------
 def test_check_video_exists_returns_row_then_none(db_session):
     _make_video(db_session, youtube_video_id="exists123456")
@@ -214,7 +229,5 @@ def test_get_video_by_id_and_by_youtube_id(db_session):
 def test_change_shadowing_status_sets_flag_true(db_session):
     video = _make_video(db_session, is_ready=False)
     change_shadowing_status(video.id, db_session)
-    refreshed = db_session.scalars(
-        select(Video).where(Video.id == video.id)
-    ).first()
+    refreshed = db_session.scalars(select(Video).where(Video.id == video.id)).first()
     assert refreshed.is_shadowing_ready is True

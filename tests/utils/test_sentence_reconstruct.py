@@ -16,26 +16,32 @@ The module builds a fugashi Tagger at import, so the whole file skips if fugashi
 (or its dictionary) is unavailable.
 """
 
+import types
+
 import pytest
 
 pytest.importorskip("fugashi", reason="fugashi not installed")
 
 try:
     from utils.sentence_reconstruct import (
+        NEVER_END,
+        NEVER_START,
         MeaningUnit,
         WhisperWord,
         apply_shadow_padding,
         build_char_timeline,
+        is_safe_to_break_after,
         post_process,
         reconstruct_sentence_for_manual,
         reconstruct_sentences_from_whisper,
         resolve_overlaps,
+        score_break_point,
         words_from_whisper,
     )
 except Exception as exc:  # fugashi dictionary missing, etc.
     pytest.skip(f"sentence_reconstruct unavailable: {exc}", allow_module_level=True)
 
-pytestmark = [pytest.mark.video_submission, pytest.mark.sentence_algo]
+pytestmark = [pytest.mark.video_submission]
 
 SENTENCE_DICT_KEYS = {"text", "start", "end", "duration", "sentence_index"}
 
@@ -94,6 +100,19 @@ def test_post_process_merges_too_short_unit():
     assert out[0].start == 0.0 and out[0].end == 2.2
 
 
+@pytest.mark.unit
+def test_post_process_merges_filler_unit():
+    units = [
+        MeaningUnit("これはテストの文", 0.0, 2.0),
+        MeaningUnit("はい", 2.0, 2.2),
+    ]  # length 1 < MIN_UNIT_LEN
+    out = post_process(units)
+    assert len(out) == 1
+    assert out[0].text == "これはテストの文はい"
+    assert out[0].start == 0.0 and out[0].end == 2.2
+
+
+# Not in test plan
 @pytest.mark.unit
 def test_post_process_merges_unit_starting_with_forbidden_particle():
     units = [
@@ -202,7 +221,7 @@ def _sample_segments(start=0.0):
 @pytest.mark.integration
 def test_reconstruct_from_whisper_produces_wellformed_sentences():
     out = reconstruct_sentences_from_whisper(_sample_segments())
-    assert out, "expected at least one sentence"
+    assert out, "At least one unit"
     for i, s in enumerate(out):
         assert set(s) == SENTENCE_DICT_KEYS
         assert s["sentence_index"] == i
@@ -210,6 +229,9 @@ def test_reconstruct_from_whisper_produces_wellformed_sentences():
     for a, b in zip(out, out[1:]):
         assert a["start"] <= b["start"]
         assert a["end"] <= b["start"] + 1e-6
+    for s in out:
+        assert s["text"][0] not in NEVER_START
+        assert s["text"][-1] not in NEVER_END
 
 
 @pytest.mark.integration
@@ -226,3 +248,62 @@ def test_shadow_padding_pulls_first_start_earlier():
         _sample_segments(start=0.6), shadow=True
     )
     assert padded[0]["start"] <= plain[0]["start"]
+
+
+# ---------------------------------------------------------------------------
+# score_break_point (UTC-15) and is_safe_to_break_after (UTC-16)
+#
+# Both functions read only a token's .surface, .feature.pos1 and .feature.form,
+# so they are driven with lightweight token stubs for deterministic POS
+# (independent of the installed fugashi dictionary).
+# ---------------------------------------------------------------------------
+def _tok(surface, pos1="", form=""):
+    return types.SimpleNamespace(
+        surface=surface, feature=types.SimpleNamespace(pos1=pos1, form=form)
+    )
+
+
+# --- score_break_point (UTC-15) -------------------------------------------
+def test_utc15_tc01_sentence_end_punct_scores_max():
+    assert score_break_point(_tok("。", "補助記号"), _tok("次", "名詞")) == 10.0
+
+
+def test_utc15_tc02_final_particle_scores_high():
+    assert score_break_point(_tok("よ", "助詞"), _tok("次", "名詞")) == 8.5
+
+
+def test_utc15_tc03_polite_ending_scores_strong():
+    assert score_break_point(_tok("です", "助動詞"), _tok("次", "名詞")) == 8.0
+
+
+def test_utc15_tc04_unsafe_break_position_scores_zero():
+    # を is in NEVER_END -> not safe to break after -> 0
+    assert score_break_point(_tok("を", "助詞"), _tok("本", "名詞")) == 0
+
+
+def test_utc15_tc05_mid_phrase_particle_scores_zero():
+    # が mid-phrase is in NEVER_END -> 0
+    assert score_break_point(_tok("が", "助詞"), _tok("食べる", "動詞")) == 0
+
+
+# --- is_safe_to_break_after (UTC-16) --------------------------------------
+def test_utc16_tc01_rejects_after_forbidden_particle():
+    assert is_safe_to_break_after(_tok("を", "助詞"), _tok("本", "名詞")) is False
+
+
+def test_utc16_tc02_rejects_before_forbidden_leading_token():
+    assert is_safe_to_break_after(_tok("本", "名詞"), _tok("の", "助詞")) is False
+
+
+def test_utc16_tc03_rejects_inside_noun_noun_compound():
+    assert is_safe_to_break_after(_tok("日本", "名詞"), _tok("語", "名詞")) is False
+
+
+def test_utc16_tc04_allows_break_at_end_of_input():
+    assert is_safe_to_break_after(_tok("本", "名詞"), None) is True
+
+
+def test_utc16_tc05_allows_content_word_before_conjunction():
+    # Plan illustrates with でも, but でも is in NEVER_START (cannot start a unit),
+    # so it returns False; しかし is the representative conjunction the code allows.
+    assert is_safe_to_break_after(_tok("本", "名詞"), _tok("しかし", "接続詞")) is True
