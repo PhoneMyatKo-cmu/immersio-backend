@@ -1,26 +1,75 @@
 """
-Tests for api/v1/endpoints/vocab.py
-Covers: docs/test_plan.md
-  §8.1 WL-01..06  POST /vocab/             (lookup)
-  §8.2 SW-01..06  POST /vocab/save, GET /vocab/check-duplicate
-[integration — TestClient via the `client` fixture]
+System tests for api/v1/endpoints/vocab.py  (vocabulary lookup route)
+
+Route:
+  POST /vocab/   get_vocabulary
+
+TestClient with get_db overridden; get_vocab_by_surface_form and
+get_caption_translation mocked at the endpoint module.
 """
 
+import types
+
 import pytest
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
 
-pytestmark = [pytest.mark.integration, pytest.mark.word_lookup]
+try:
+    from api.v1.endpoints import vocab as ep
+    from db.base import get_db
+except Exception as exc:
+    pytest.skip(f"vocab endpoint unavailable: {exc}", allow_module_level=True)
 
-
-@pytest.mark.skip(reason="TODO WL-03/04: empty surface -> 400, not found -> 404")
-def test_wl_validation(client):
-    ...
-
-
-@pytest.mark.skip(reason="TODO WL-01/02/06: lookup happy paths + translate fallback")
-def test_wl_lookup(client):
-    ...
+pytestmark = [pytest.mark.system, pytest.mark.word_lookup]
 
 
-@pytest.mark.skip(reason="TODO SW-01..06: save, 401, duplicate 500, check-duplicate scoping")
-def test_sw_save_and_check(client, fx_user_save):
-    ...
+def _client():
+    app = FastAPI()
+    app.include_router(ep.router)
+
+    def _get_db():
+        yield object()
+
+    app.dependency_overrides[get_db] = _get_db
+    return TestClient(app)
+
+
+def _vocab():
+    return types.SimpleNamespace(
+        id=1, japanese_form="食べる", reading="taberu",
+        meanings=[{"pos": "verb", "meanings": ["to eat"]}], estimated_level="N5",
+    )
+
+
+_REQ = {
+    "vocab_surface_form": "食べる",
+    "video_id": 1,
+    "caption": {"id": 1, "text": "毎日ご飯を食べる。"},
+}
+
+
+def test_get_vocabulary_success(monkeypatch):
+    monkeypatch.setattr(ep, "get_vocab_by_surface_form", lambda sf, db: _vocab())
+    monkeypatch.setattr(ep, "get_caption_translation", lambda cap, db: "I eat rice every day.")
+    r = _client().post("/vocab/", json=_REQ)
+    assert r.status_code == 200
+    body = r.json()
+    assert body["vocab_id"] == 1
+    assert body["surface_form"] == "食べる"
+    assert body["sentence_translation"] == "I eat rice every day."
+    assert body["context_sentence"] == {"id": 1, "text": "毎日ご飯を食べる。"}
+
+
+def test_get_vocabulary_empty_surface_returns_400(monkeypatch):
+    monkeypatch.setattr(ep, "get_vocab_by_surface_form", lambda sf, db: _vocab())
+    monkeypatch.setattr(ep, "get_caption_translation", lambda cap, db: "x")
+    req = dict(_REQ, vocab_surface_form="")
+    r = _client().post("/vocab/", json=req)
+    assert r.status_code == 400
+
+
+def test_get_vocabulary_not_found_returns_404(monkeypatch):
+    monkeypatch.setattr(ep, "get_vocab_by_surface_form", lambda sf, db: None)
+    r = _client().post("/vocab/", json=_REQ)
+    assert r.status_code == 404
+    assert r.json()["detail"] == "Meaning Not Found."

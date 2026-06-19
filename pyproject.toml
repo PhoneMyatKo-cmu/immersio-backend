@@ -13,4 +13,5 @@ markers = [
     "word_lookup: Word Look Up feature",
     "caption_helper: caption-helper utility tests",
     "lookup: dictionary-lookup utility tests",
+    "system: end-to-end / system tests exercising routes through the FastAPI TestClient",
 ]
