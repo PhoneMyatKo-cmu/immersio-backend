@@ -120,7 +120,7 @@ def extract_pitch(audio_path: str, sr: int = 22050, start_time: float = 0.0, end
     return f0, sr
 
 def normalize_pitch(f0: np.ndarray) -> np.ndarray:
-    voiced = np.nan_to_num(f0, nan=0.0)
+    voiced = f0[f0 > 0]  # Consider only voiced frames for mean calculation
     if len(voiced) == 0:
         return f0
 
@@ -136,17 +136,23 @@ def normalize_pitch(f0: np.ndarray) -> np.ndarray:
     return normalized
 
 def compare_pitch(f0_ref: np.ndarray, f0_target: np.ndarray):
-    # Reshape to 2D — fastdtw expects (n_frames, n_features)
-    ref    = f0_ref.reshape(-1, 1)
-    target = f0_target.reshape(-1, 1)
+    ref = f0_ref[f0_ref > 0]  # Consider only voiced frames for alignment
+    target = f0_target[f0_target > 0]
 
-    distance, path = fastdtw(ref, target, dist=euclidean)
+    ref_delta = np.gradient(ref) if len(ref) >= 2 else np.zeros_like(ref)
+    target_delta = np.gradient(target) if len(target) >= 2 else np.zeros_like(target)
+
+    # Reshape to 2D — fastdtw expects (n_frames, n_features)
+    ref    = np.hstack((ref.reshape(-1, 1), ref_delta.reshape(-1, 1)))
+    target = np.hstack((target.reshape(-1, 1), target_delta.reshape(-1, 1)))
+
+    distance, path = fastdtw(ref, target, radius=1, dist=euclidean)
 
     # Normalize by path length — longer sequences naturally accumulate more cost
     normalized_distance = distance / len(path)
 
-    aligned_ref = np.array([f0_ref[i] for i, _ in path])
-    aligned_target = np.array([f0_target[j] for _, j in path])
+    aligned_ref = np.array([ref[i, 0] for i, _ in path])
+    aligned_target = np.array([target[j, 0] for _, j in path])
 
     return {
         "distance": distance,
