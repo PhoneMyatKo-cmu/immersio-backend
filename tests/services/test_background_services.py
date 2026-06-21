@@ -11,11 +11,11 @@ import pytest
 pytestmark = [pytest.mark.integration, pytest.mark.video_submission]
 
 
-@pytest.mark.skip(reason="TODO BG-01: process_video_vocab_background builds profile + difficulty")
-def test_bg_01_vocab_background(db_session):
-    ...
+# @pytest.mark.skip(reason="TODO BG-01: process_video_vocab_background builds profile + difficulty")
+# def test_bg_01_vocab_background(db_session):
+#     ...
 
 
-@pytest.mark.skip(reason="TODO BG-02: whisper background saves sentences + marks ready")
-def test_bg_02_whisper_background(db_session):
-    ...
+# @pytest.mark.skip(reason="TODO BG-02: whisper background saves sentences + marks ready")
+# def test_bg_02_whisper_background(db_session):
+#     ...

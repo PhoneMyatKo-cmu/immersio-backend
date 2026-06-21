@@ -120,16 +120,57 @@ def test_normalize_pitch_returns_input_when_no_voiced_frames(shadowing_helpers):
     np.testing.assert_array_equal(result, f0)
 
 
-def test_compare_pitch_filters_unvoiced_frames_and_normalizes_distance(
+# def test_compare_pitch_runs_dtw_and_returns_aligned_contours(
+#     monkeypatch, shadowing_helpers
+# ):
+#     calls = {}
+
+#     def fake_fastdtw(ref, target, radius, dist):
+#         calls["ref"] = ref.copy()
+#         calls["target"] = target.copy()
+#         calls["dist"] = dist
+#         calls["radius"] = radius
+#         return 6.0, [(0, 0), (1, 1), (2, 1)]
+
+#     monkeypatch.setattr(shadowing_helpers, "fastdtw", fake_fastdtw)
+
+#     result = shadowing_helpers.compare_pitch(
+#         np.array([0.0, 1.0, 2.0]),
+#         np.array([3.0, 0.0]),
+#     )
+
+#     # Contours are reshaped to (n, 1) and passed to DTW without unvoiced filtering.
+#     np.testing.assert_array_equal(calls["ref"], np.array([[0.0], [1.0], [2.0]]))
+#     np.testing.assert_array_equal(calls["target"], np.array([[3.0], [0.0]]))
+#     assert calls["dist"] is shadowing_helpers.euclidean
+
+
+#     assert result["distance"] == 6.0
+#     assert result["normalized_distance"] == 2.0  # 6.0 / len(path)
+#     assert result["path"] == [(0, 0), (1, 1), (2, 1)]
+#     assert result["path_length"] == 3
+#     # aligned contours follow the DTW path, indexing the original arrays
+#     np.testing.assert_array_equal(result["aligned_ref"], np.array([0.0, 1.0, 2.0]))
+#     np.testing.assert_array_equal(result["aligned_target"], np.array([3.0, 0.0, 0.0]))
+#     assert set(result) == {
+#         "distance",
+#         "normalized_distance",
+#         "path",
+#         "path_length",
+#         "aligned_ref",
+#         "aligned_target",
+#     }
+def test_compare_pitch_runs_dtw_and_returns_aligned_contours(
     monkeypatch, shadowing_helpers
 ):
     calls = {}
 
-    def fake_fastdtw(ref, target, dist):
+    def fake_fastdtw(ref, target, radius, dist):
         calls["ref"] = ref.copy()
         calls["target"] = target.copy()
         calls["dist"] = dist
-        return 6.0, [(0, 0), (1, 1), (2, 1)]
+        calls["radius"] = radius
+        return 6.0, [(0, 0), (1, 0)]
 
     monkeypatch.setattr(shadowing_helpers, "fastdtw", fake_fastdtw)
 
@@ -138,14 +179,30 @@ def test_compare_pitch_filters_unvoiced_frames_and_normalizes_distance(
         np.array([3.0, 0.0]),
     )
 
-    np.testing.assert_array_equal(calls["ref"], np.array([[1.0], [2.0]]))
-    np.testing.assert_array_equal(calls["target"], np.array([[3.0]]))
+    # Unvoiced (== 0) frames are dropped, and each contour gains a delta column:
+    #   ref    [0,1,2] -> voiced [1,2] -> stacked [[1,1],[2,1]]
+    #   target [3,0]   -> voiced [3]   -> stacked [[3,0]]
+    np.testing.assert_array_equal(calls["ref"], np.array([[1.0, 1.0], [2.0, 1.0]]))
+    np.testing.assert_array_equal(calls["target"], np.array([[3.0, 0.0]]))
     assert calls["dist"] is shadowing_helpers.euclidean
-    assert result == {
-        "distance": 6.0,
-        "normalized_distance": 2.0,
-        "path": [(0, 0), (1, 1), (2, 1)],
-        "path_length": 3,
+    assert calls["radius"] == 1
+
+    assert result["distance"] == 6.0
+    assert result["normalized_distance"] == 3.0  # 6.0 / len(path)
+    assert result["path"] == [(0, 0), (1, 0)]
+    assert result["path_length"] == 2
+
+    # aligned contours follow the DTW path, reading column 0 of the stacked arrays
+    np.testing.assert_array_equal(result["aligned_ref"], np.array([1.0, 2.0]))
+    np.testing.assert_array_equal(result["aligned_target"], np.array([3.0, 3.0]))
+
+    assert set(result) == {
+        "distance",
+        "normalized_distance",
+        "path",
+        "path_length",
+        "aligned_ref",
+        "aligned_target",
     }
 
 
@@ -173,7 +230,13 @@ def test_analyze_pitch_accent_composes_pitch_pipeline(monkeypatch, shadowing_hel
     target_pitch = np.array([150.0, 300.0])
     normalized_ref = np.array([-1.0, 1.0])
     normalized_target = np.array([-2.0, 2.0])
-    comparison = {"normalized_distance": 1.25}
+    aligned_ref_dtw = np.array([-1.0, 1.0, 1.0])
+    aligned_target_dtw = np.array([-2.0, 2.0, 2.0])
+    comparison = {
+        "normalized_distance": 1.25,
+        "aligned_ref": aligned_ref_dtw,
+        "aligned_target": aligned_target_dtw,
+    }
     score = {"grade": "Good", "score": 75.0}
 
     def fake_extract_pitch(audio_path, sr, start_time, end_time):
@@ -213,6 +276,8 @@ def test_analyze_pitch_accent_composes_pitch_pipeline(monkeypatch, shadowing_hel
         "score": score,
         "normalized_ref": normalized_ref,
         "normalized_target": normalized_target,
+        "aligned_ref": aligned_ref_dtw,
+        "aligned_target": aligned_target_dtw,
     }
 
 

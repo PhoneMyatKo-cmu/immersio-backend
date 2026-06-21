@@ -69,10 +69,7 @@ def test_save_user_persists_and_refreshes_user(user_db):
 
     assert saved is user
     assert saved.id is not None
-    assert (
-        user_db.scalar(select(User).where(User.email == "new@example.com"))
-        is saved
-    )
+    assert user_db.scalar(select(User).where(User.email == "new@example.com")) is saved
 
 
 def test_save_user_rolls_back_and_raises_conflict_for_duplicate_email(user_db):
@@ -143,12 +140,15 @@ def test_update_user_rolls_back_and_raises_500_on_commit_failure():
     assert db.refreshed is False
 
 
-def test_delete_user_removes_user(user_db):
-    user = save_user(_user(email="delete@example.com"), user_db)
+def test_delete_user_removes_user(db_session):
+    # Uses the shared Postgres test-DB fixture so the full schema exists:
+    # delete_user lazy-loads the user_saved_vocabulary / user_vocab_profile
+    # backrefs, which the single-table SQLite fixture cannot satisfy.
+    user = save_user(_user(email="delete@example.com"), db_session)
 
-    delete_user(user, user_db)
+    delete_user(user, db_session)
 
-    assert get_user_by_email("delete@example.com", user_db) is None
+    assert get_user_by_email("delete@example.com", db_session) is None
 
 
 def test_delete_user_rolls_back_and_raises_500_on_commit_failure():

@@ -62,8 +62,8 @@ def test_pronunciation_score_returns_metrics_and_pitch_data(
         }
         return {
             "score": 92.5,
-            "normalized_target": _Pitch([0.1, 0.2, 0.3]),
-            "normalized_ref": _Pitch([0.3, 0.2, 0.1]),
+            "aligned_target": _Pitch([0.1, 0.2, 0.3]),
+            "aligned_ref": _Pitch([0.3, 0.2, 0.1]),
         }
 
     monkeypatch.setattr(shadowing_endpoint, "transcribe_audio", fake_transcribe_audio)
