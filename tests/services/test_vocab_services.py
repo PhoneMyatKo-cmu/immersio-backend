@@ -15,11 +15,12 @@ import pytest
 
 try:
     from sqlalchemy import select
+
     from models.vocab import EstimatedLevel, Vocabulary
     from services.vocab import vocab_services as svc
     from services.vocab.vocab_services import (
-        save_vocabularies,
         get_vocab_by_surface_form,
+        save_vocabularies,
     )
 except Exception as exc:  # fugashi / cutlet / GCT key at import, etc.
     pytest.skip(f"vocab_services unavailable: {exc}", allow_module_level=True)
@@ -55,7 +56,8 @@ def test_save_vocabularies_inserts_new_words(monkeypatch, db_session):
 def test_save_vocabularies_skips_existing_word(monkeypatch, db_session):
     db_session.add(
         Vocabulary(
-            japanese_form="猫", reading="neko",
+            japanese_form="猫",
+            reading="neko",
             meanings=[{"pos": "noun", "meanings": ["cat"]}],
             estimated_level=EstimatedLevel.N5,
         )
@@ -66,8 +68,8 @@ def test_save_vocabularies_skips_existing_word(monkeypatch, db_session):
     save_vocabularies([("猫", "猫"), ("犬", "犬")], db_session)
 
     forms = _all_forms(db_session)
-    assert forms.count("猫") == 1   # not duplicated
-    assert "犬" in forms             # new one added
+    assert forms.count("猫") == 1  # not duplicated
+    assert "犬" in forms  # new one added
 
 
 # --- SVOC-03 ----------------------------------------------------------------
@@ -80,10 +82,11 @@ def test_save_vocabularies_dedups_within_input(monkeypatch, db_session):
 
 # --- VDS-01 -----------------------------------------------------------------
 @pytest.mark.word_lookup
-def test_get_vocab_by_surface_form_returns_row_or_none(db_session):
+def test_get_vocab_by_surface_form_returns_row_if_found(db_session):
     db_session.add(
         Vocabulary(
-            japanese_form="食べる", reading="taberu",
+            japanese_form="食べる",
+            reading="taberu",
             meanings=[{"pos": "verb", "meanings": ["to eat"]}],
             estimated_level=EstimatedLevel.N5,
         )
@@ -93,4 +96,22 @@ def test_get_vocab_by_surface_form_returns_row_or_none(db_session):
     found = get_vocab_by_surface_form("食べる", db_session)
     assert found is not None
     assert found.reading == "taberu"
+    # assert get_vocab_by_surface_form("走る", db_session) is None
+
+
+@pytest.mark.word_lookup
+def test_get_vocab_by_surface_form_returns_none_if_not_found(db_session):
+    db_session.add(
+        Vocabulary(
+            japanese_form="食べる",
+            reading="taberu",
+            meanings=[{"pos": "verb", "meanings": ["to eat"]}],
+            estimated_level=EstimatedLevel.N5,
+        )
+    )
+    db_session.commit()
+
+    # found = get_vocab_by_surface_form("食べる", db_session)
+    # assert found is not None
+    # assert found.reading == "taberu"
     assert get_vocab_by_surface_form("走る", db_session) is None
