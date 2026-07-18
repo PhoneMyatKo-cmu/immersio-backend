@@ -25,6 +25,7 @@ def save_vocabularies(tokens: list, db: Session):
                 japanese_form=token[0],
                 reading=looked_up_token["romanji_reading"],
                 meanings=looked_up_token["meanings"],
+                lemma=token[2],
                 estimated_level=EstimatedLevel(looked_up_token["jlpt_tier"]),
             )
             db.add(vocab)

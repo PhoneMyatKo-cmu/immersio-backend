@@ -88,10 +88,17 @@ def analyse_token(text):
             )
             token_pos = token_features.pos1
             token_pos_detail = token_features.pos2
+
+            lemma = str(token_features.lemma)
+            if lemma == "*" or lemma is None:
+                lemma = node.surface
+            else:
+                lemma = lemma.split("-")[0]  # dictionary form (lemma) of the token
             tokens.append(
                 {
                     "surface": node.surface,
                     "base_form": token_base_form,
+                    "lemma": lemma, # dictionary form (lemma) of the token
                     "pos": token_pos,  # Part of speech
                     "pos_detail": token_pos_detail,  # POS subcategory
                     "is_content_word": is_content_token,

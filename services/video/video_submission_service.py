@@ -77,11 +77,18 @@ def submit_video_for_processing(
     line_level_captions = get_line_level_captions(raw_captions)
     processed_captions = process_captions(line_level_captions)
     flattened_token = [
-        (t["surface"], t["base_form"])
+        (t["surface"], t["base_form"], t["lemma"])
         for caption in processed_captions
         for t in caption["tokens"]
     ]
     surface_form_list = [token[0] for token in flattened_token]
+
+    vocab_caption_map = {}
+    for caption in processed_captions:
+        for token in caption["tokens"]:
+            if token["surface"] not in vocab_caption_map:
+                vocab_caption_map[token["surface"]] = []
+            vocab_caption_map[token["surface"]].append(caption["index"])
 
     # context_sentences = reconstruct_context_sentences(
     #     validation_result=validation_result,
@@ -120,6 +127,7 @@ def submit_video_for_processing(
             process_video_vocab_background,
             saved_video_id,
             surface_form_list,
+            vocab_caption_map,
         )
 
     except Exception as e:
