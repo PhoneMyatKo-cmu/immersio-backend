@@ -16,4 +16,8 @@ class VideoVocabulary(Base):
     )
     frequency: Mapped[int] = mapped_column(default=1)
 
+    caption_indices: Mapped[str] = mapped_column(
+        default="", doc="Comma-separated list of caption indices where the vocab appears"
+    )
+
     __table_args__ = (UniqueConstraint("video_id", "vocab_id", name="uq_video_vocab"),)

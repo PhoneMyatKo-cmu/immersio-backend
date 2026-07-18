@@ -61,3 +61,38 @@ class User(Base):
         default=datetime.utcnow,
         nullable=False
     )
+
+    total_videos_viewed: Mapped[int] = mapped_column(
+        default=0,
+        doc="Total number of videos viewed by the user"
+    )
+
+    total_study_time: Mapped[int] = mapped_column(
+        default=0,
+        doc="Total study time in seconds"
+    )
+
+    total_vocab_seen: Mapped[int] = mapped_column(
+        default=0,
+        doc="Total number of unique vocabulary items seen by the user"
+    )
+
+    total_known_vocab: Mapped[int] = mapped_column(
+        default=0,
+        doc="Total number of vocabulary items which have been seen over a certain threshold and are considered 'known' by the user"
+    )
+
+    total_vocab_mastered: Mapped[int] = mapped_column(
+        default=0,
+        doc="Total number of vocabulary items which have ease factors above a certain threshold through spaced repetition and are considered 'mastered' by the user"
+    )
+
+    streak: Mapped[int] = mapped_column(
+        default=0,
+        doc="Current streak of consecutive days the user has studied"
+    )
+
+    longest_streak: Mapped[int] = mapped_column(
+        default=0,
+        doc="Longest streak of consecutive days the user has studied"
+    )

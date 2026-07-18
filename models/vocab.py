@@ -27,6 +27,8 @@ class Vocabulary(Base):
 
     meanings: Mapped[dict] = mapped_column(JSONB, nullable=False, default=list)
 
+    lemma: Mapped[str] = mapped_column(String(255), nullable=False)
+
     estimated_level: Mapped[EstimatedLevel] = mapped_column(
         Enum(EstimatedLevel, name="vocab_level_enum"),
         nullable=False,
