@@ -6,9 +6,17 @@ from models.user import User
 from models.video import VideoSource
 from math import ceil
 from schemas.user import Message
-from schemas.video import VideoAdminListResponse, VideoUrl
+from schemas.video import (
+    VideoAdminListResponse,
+    VideoStatsResponse,
+    VideoUrl,
+)
 from services.auth.authentication_service import require_admin
-from services.video.video_services import get_videos_admin, soft_delete_video
+from services.video.video_services import (
+    get_video_stats,
+    get_videos_admin,
+    soft_delete_video,
+)
 from services.video.video_submission_service import (
     SubmissionResult,
     submit_video_for_processing,
@@ -31,6 +39,14 @@ def add_video(
         source=VideoSource.curated,
         added_by=admin.id,
     )
+
+
+@router.get("/stats")
+def video_stats(
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+) -> VideoStatsResponse:
+    return VideoStatsResponse(**get_video_stats(db))
 
 
 @router.get("/")

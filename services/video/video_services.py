@@ -1,7 +1,10 @@
+from datetime import datetime, timedelta
+
 import isodate
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
+from models.user import User
 from models.video import Video, VideoSource
 
 
@@ -174,6 +177,81 @@ def change_shadowing_status(video_id: int, db: Session) -> None:
         update(Video).where(Video.id == video_id).values(is_shadowing_ready=True)
     )
     db.commit()
+
+
+def get_video_stats(db: Session, top_contributors_limit: int = 5) -> dict:
+    """Aggregate platform-wide video catalog stats for the admin dashboard."""
+    now = datetime.utcnow()
+
+    total = db.scalar(select(func.count()).select_from(Video)) or 0
+    active = (
+        db.scalar(
+            select(func.count()).select_from(Video).where(Video.is_active.is_(True))
+        )
+        or 0
+    )
+
+    source_rows = db.execute(
+        select(Video.source, func.count()).group_by(Video.source)
+    ).all()
+    source_counts = {source: count for source, count in source_rows}
+
+    ready = (
+        db.scalar(
+            select(func.count())
+            .select_from(Video)
+            .where(Video.is_shadowing_ready.is_(True))
+        )
+        or 0
+    )
+
+    last_7 = (
+        db.scalar(
+            select(func.count())
+            .select_from(Video)
+            .where(Video.created_at >= now - timedelta(days=7))
+        )
+        or 0
+    )
+    last_30 = (
+        db.scalar(
+            select(func.count())
+            .select_from(Video)
+            .where(Video.created_at >= now - timedelta(days=30))
+        )
+        or 0
+    )
+
+    contributor_rows = db.execute(
+        select(
+            Video.added_by,
+            func.concat(User.first_name, " ", User.last_name),
+            func.count(),
+        )
+        .join(User, User.id == Video.added_by)
+        .where(Video.added_by.is_not(None))
+        .group_by(Video.added_by, User.first_name, User.last_name)
+        .order_by(func.count().desc())
+        .limit(top_contributors_limit)
+    ).all()
+
+    return {
+        "total": total,
+        "active": active,
+        "inactive": total - active,
+        "by_source": {
+            "curated": source_counts.get(VideoSource.curated, 0),
+            "user_submitted": source_counts.get(VideoSource.user_submitted, 0),
+        },
+        "shadowing_ready": ready,
+        "shadowing_not_ready": total - ready,
+        "added_last_7_days": last_7,
+        "added_last_30_days": last_30,
+        "top_contributors": [
+            {"added_by": added_by, "name": name, "count": count}
+            for added_by, name, count in contributor_rows
+        ],
+    }
 
 
 def soft_delete_video(video_id: int, db: Session) -> Video | None:

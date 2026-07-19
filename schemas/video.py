@@ -41,3 +41,26 @@ class VideoAdminListResponse(BaseModel):
     page: int
     page_size: int
     total_pages: int
+
+
+class SourceBreakdown(BaseModel):
+    curated: int
+    user_submitted: int
+
+
+class TopContributor(BaseModel):
+    added_by: int
+    name: str | None
+    count: int
+
+
+class VideoStatsResponse(BaseModel):
+    total: int
+    active: int
+    inactive: int
+    by_source: SourceBreakdown
+    shadowing_ready: int
+    shadowing_not_ready: int
+    added_last_7_days: int
+    added_last_30_days: int
+    top_contributors: list[TopContributor]
