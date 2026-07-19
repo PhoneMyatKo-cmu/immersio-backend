@@ -117,8 +117,7 @@ def update_profile(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> User:
-    updated_user = User(**payload.model_dump(exclude_unset=True))
-    return update_user(current_user, updated_user, db)
+    return update_user(current_user, payload, db)
 
 @router.post("/reset-password", response_model=Message)
 def reset_password(

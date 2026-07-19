@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
 from models.user import User
+from schemas.user import UserUpdate
 
 
 
@@ -25,7 +26,7 @@ def save_user(user: User, db: Session) -> User:
 def get_user_by_email(email: str, db: Session) -> User | None:
     return db.query(User).filter(User.email == email.lower()).first()
 
-def update_user(current_user: User, updated_user: User, db: Session) -> User:
+def update_user(current_user: User, updated_user: UserUpdate, db: Session) -> User:
     for field, value in updated_user.model_dump(exclude_unset=True).items():
         setattr(current_user, field, value)
     try:

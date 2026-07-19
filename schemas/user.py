@@ -45,11 +45,12 @@ class UserRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 class UserUpdate(BaseModel):
-    first_name: str | None
-    last_name: str | None
-    estimated_level: EstimatedLevel | None
-    role: UserRole | None
-    email: EmailStr | None
+    # Self-service profile update. Deliberately excludes `role` (privilege
+    # escalation — only an admin may change roles) and `email` (it is the JWT
+    # subject/identity, changing it would invalidate live tokens).
+    first_name: str | None = Field(default=None, min_length=1, max_length=100)
+    last_name: str | None = Field(default=None, min_length=1, max_length=100)
+    estimated_level: EstimatedLevel | None = None
 
 class UserUpdatePassword(BaseModel):
     current_password: str = Field(min_length=1, max_length=128)
