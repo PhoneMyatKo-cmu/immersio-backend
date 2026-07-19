@@ -4,10 +4,11 @@ from sqlalchemy.orm import Session
 from db.base import get_db
 from models.user import User
 from models.video import VideoSource
+from math import ceil
 from schemas.user import Message
-from schemas.video import VideoUrl
+from schemas.video import VideoAdminListResponse, VideoUrl
 from services.auth.authentication_service import require_admin
-from services.video.video_services import soft_delete_video
+from services.video.video_services import get_videos_admin, soft_delete_video
 from services.video.video_submission_service import (
     SubmissionResult,
     submit_video_for_processing,
@@ -29,6 +30,35 @@ def add_video(
         background_tasks,
         source=VideoSource.curated,
         added_by=admin.id,
+    )
+
+
+@router.get("/")
+def list_videos(
+    search: str = None,
+    source: VideoSource | None = None,
+    is_active: bool | None = None,
+    added_by: int | None = None,
+    page: int = 1,
+    page_size: int = 20,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+) -> VideoAdminListResponse:
+    videos, total = get_videos_admin(
+        db,
+        search=search.lower() if search else None,
+        source=source,
+        is_active=is_active,
+        added_by=added_by,
+        page=page,
+        page_size=page_size,
+    )
+    return VideoAdminListResponse(
+        items=videos,
+        total=total,
+        page=page,
+        page_size=page_size,
+        total_pages=ceil(total / page_size) if page_size else 0,
     )
 
 

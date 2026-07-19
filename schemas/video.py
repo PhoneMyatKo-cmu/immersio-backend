@@ -1,4 +1,8 @@
+from datetime import datetime
+
 from pydantic import BaseModel, ConfigDict
+
+from models.video import VideoSource
 
 
 class VideoResponse(BaseModel):
@@ -13,3 +17,27 @@ class VideoResponse(BaseModel):
 
 class VideoUrl(BaseModel):
     youtube_url: str
+
+
+class VideoAdminRead(BaseModel):
+    id: int
+    youtube_video_id: str
+    title: str
+    thumbnail_url: str
+    channel_name: str
+    duration_seconds: int
+    is_shadowing_ready: bool
+    source: VideoSource
+    is_active: bool
+    added_by: int | None
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class VideoAdminListResponse(BaseModel):
+    items: list[VideoAdminRead]
+    total: int
+    page: int
+    page_size: int
+    total_pages: int

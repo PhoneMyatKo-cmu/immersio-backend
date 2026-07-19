@@ -118,6 +118,39 @@ def get_total_video_count(db: Session, stmt: select):
     return total_videos
 
 
+def get_videos_admin(
+    db: Session,
+    search: str = None,
+    source: VideoSource | None = None,
+    is_active: bool | None = None,
+    added_by: int | None = None,
+    page: int = 1,
+    page_size: int = 20,
+):
+    """List videos for admin with optional filters.
+
+    Unlike get_videos, this does not hide inactive videos by default; each
+    filter is applied only when provided (None = don't filter on that axis).
+    Returns (rows, total_count).
+    """
+    stmt = select(Video).order_by(Video.created_at.desc())
+
+    if search:
+        stmt = stmt.where(Video.title.ilike(f"%{search}%"))
+    if source is not None:
+        stmt = stmt.where(Video.source == source)
+    if is_active is not None:
+        stmt = stmt.where(Video.is_active.is_(is_active))
+    if added_by is not None:
+        stmt = stmt.where(Video.added_by == added_by)
+
+    rows = (
+        db.execute(stmt.limit(page_size).offset((page - 1) * page_size)).scalars().all()
+    )
+    total_videos = get_total_video_count(db, stmt)
+    return rows, total_videos
+
+
 # def save_difficulty(video_id: int, db: Session):
 #     video_vocab_list = get_video_vocab_with_tiers(video_id=video_id, db=db)
 #     difficulty_level = compute_difficulty(video_vocab=video_vocab_list)
