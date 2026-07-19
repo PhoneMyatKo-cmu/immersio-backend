@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 
 from fastapi import HTTPException, status
 from sqlalchemy import func, select
@@ -65,6 +66,58 @@ def get_users_admin(
     )
     total = db.scalar(select(func.count()).select_from(stmt.subquery()))
     return rows, total
+
+
+def get_user_stats(db: Session) -> dict:
+    """Aggregate platform-wide user stats for the admin dashboard."""
+    now = datetime.utcnow()
+
+    total = db.scalar(select(func.count()).select_from(User)) or 0
+    active = (
+        db.scalar(
+            select(func.count()).select_from(User).where(User.is_active.is_(True))
+        )
+        or 0
+    )
+
+    role_rows = db.execute(
+        select(User.role, func.count()).group_by(User.role)
+    ).all()
+    role_counts = {role: count for role, count in role_rows}
+
+    level_rows = db.execute(
+        select(User.estimated_level, func.count()).group_by(User.estimated_level)
+    ).all()
+    level_counts = {level: count for level, count in level_rows}
+
+    def _count_since(column, days):
+        return (
+            db.scalar(
+                select(func.count())
+                .select_from(User)
+                .where(column >= now - timedelta(days=days))
+            )
+            or 0
+        )
+
+    return {
+        "total": total,
+        "active": active,
+        "inactive": total - active,
+        "by_role": {
+            "admin": role_counts.get(UserRole.ADMIN, 0),
+            "learner": role_counts.get(UserRole.LEARNER, 0),
+        },
+        "by_level": {
+            "beginner": level_counts.get(EstimatedLevel.beginner, 0),
+            "intermediate": level_counts.get(EstimatedLevel.intermediate, 0),
+            "advanced": level_counts.get(EstimatedLevel.advanced, 0),
+        },
+        "signups_last_7_days": _count_since(User.created_at, 7),
+        "signups_last_30_days": _count_since(User.created_at, 30),
+        "active_last_7_days": _count_since(User.last_login_at, 7),
+        "active_last_30_days": _count_since(User.last_login_at, 30),
+    }
 
 
 def soft_delete_user(user_id: int, db: Session) -> User | None:

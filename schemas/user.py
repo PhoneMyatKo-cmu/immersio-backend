@@ -78,6 +78,29 @@ class UserAdminListResponse(BaseModel):
 class UserRoleUpdate(BaseModel):
     role: UserRole
 
+
+class RoleBreakdown(BaseModel):
+    admin: int
+    learner: int
+
+
+class LevelBreakdown(BaseModel):
+    beginner: int
+    intermediate: int
+    advanced: int
+
+
+class UserStatsResponse(BaseModel):
+    total: int
+    active: int
+    inactive: int
+    by_role: RoleBreakdown
+    by_level: LevelBreakdown
+    signups_last_7_days: int
+    signups_last_30_days: int
+    active_last_7_days: int
+    active_last_30_days: int
+
 class UserUpdatePassword(BaseModel):
     current_password: str = Field(min_length=1, max_length=128)
     new_password: str = Field(min_length=8, max_length=128)

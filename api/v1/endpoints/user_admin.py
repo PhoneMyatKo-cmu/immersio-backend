@@ -10,11 +10,13 @@ from schemas.user import (
     UserAdminListResponse,
     UserAdminRead,
     UserRoleUpdate,
+    UserStatsResponse,
 )
 from services.auth.authentication_service import require_admin
 from services.user.user_services import (
     change_user_role,
     get_user_by_id,
+    get_user_stats,
     get_users_admin,
     soft_delete_user,
 )
@@ -49,6 +51,14 @@ def list_users(
         page_size=page_size,
         total_pages=ceil(total / page_size) if page_size else 0,
     )
+
+
+@router.get("/stats")
+def user_stats(
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+) -> UserStatsResponse:
+    return UserStatsResponse(**get_user_stats(db))
 
 
 @router.get("/{user_id}")
