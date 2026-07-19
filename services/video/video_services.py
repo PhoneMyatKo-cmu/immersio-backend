@@ -97,7 +97,11 @@ def get_video_by_id(id: int, db: Session):
 
 
 def get_videos(db: Session, search: str = None, page: int = 1, page_size: int = 6):
-    stmt = select(Video).order_by(Video.created_at.desc())
+    stmt = (
+        select(Video)
+        .where(Video.is_active.is_(True))
+        .order_by(Video.created_at.desc())
+    )
 
     if search:
         stmt = stmt.where(Video.title.ilike(f"%{search}%"))
@@ -137,3 +141,18 @@ def change_shadowing_status(video_id: int, db: Session) -> None:
         update(Video).where(Video.id == video_id).values(is_shadowing_ready=True)
     )
     db.commit()
+
+
+def soft_delete_video(video_id: int, db: Session) -> Video | None:
+    """Soft-delete a video by setting is_active to False.
+
+    Returns the updated video, or None if no video with that id exists.
+    """
+    video = get_video_by_id(video_id, db)
+    if video is None:
+        return None
+
+    video.is_active = False
+    db.commit()
+    db.refresh(video)
+    return video
