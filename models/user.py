@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import String, DateTime, Enum
+from sqlalchemy import Boolean, String, DateTime, Enum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 import enum
 
@@ -60,6 +60,18 @@ class User(Base):
         DateTime,
         default=datetime.utcnow,
         nullable=False
+    )
+
+    is_active: Mapped[bool] = mapped_column(
+        Boolean,
+        default=True,
+        nullable=False
+    )
+
+    last_login_at: Mapped[datetime | None] = mapped_column(
+        DateTime,
+        nullable=True,
+        default=None
     )
 
     added_videos = relationship("Video", back_populates="added_by_user")

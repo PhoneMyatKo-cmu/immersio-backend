@@ -64,6 +64,8 @@ def authenticate_user(db: Session, email: str, password: str) -> UserRead | None
     user = get_user_by_email(email, db)
     if user is None or not verify_password(password, user.password_hash):
         return None
+    user.last_login_at = datetime.utcnow()
+    db.commit()
     return user
 
 def create_refresh_token(subject: str) -> str:
