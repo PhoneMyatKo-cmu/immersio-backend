@@ -9,6 +9,7 @@ from api.v1.endpoints import (
     sentence,
     shadowing,
     video,
+    video_admin,
     video_submission,
     vocab,
 )
@@ -61,3 +62,4 @@ app.include_router(ai_explanation.router)
 app.include_router(video.router)
 app.include_router(shadowing.router)
 app.include_router(sentence.router)
+app.include_router(video_admin.router)

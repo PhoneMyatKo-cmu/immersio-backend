@@ -15,6 +15,7 @@ from services.video.video_services import (
     save_video,
 )
 from services.video.video_validation_service import validate_video
+from models.video import VideoSource
 from services.vocab.vocab_services import save_vocabularies
 from utils.captions_helpers import (
     get_line_level_captions,
@@ -32,7 +33,11 @@ class SubmissionResult(BaseModel):
 
 
 def submit_video_for_processing(
-    youtube_url: str, db: Session, background_tasks: BackgroundTasks
+    youtube_url: str,
+    db: Session,
+    background_tasks: BackgroundTasks,
+    source: VideoSource = VideoSource.user_submitted,
+    added_by: int | None = None,
 ):
     """ "
     Validate a YouTube URL, ingest its Japanese captions, and persist the
@@ -94,6 +99,8 @@ def submit_video_for_processing(
             meta_data=validation_result["meta_data"],
             suitability=validation_result["suitablity"],
             db=db,
+            source=source,
+            added_by=added_by,
         )
 
         saved_video_id = video["video_id"]

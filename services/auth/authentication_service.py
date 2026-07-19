@@ -10,7 +10,7 @@ from fastapi.security import OAuth2PasswordBearer
 from pydantic import ValidationError
 from sqlalchemy import select
 from schemas.user import *
-from models.user import User
+from models.user import User, UserRole
 from db.base import get_db
 from sqlalchemy.orm import Session
 import os
@@ -167,6 +167,15 @@ def get_current_user(
     if user is None:
         raise _credentials_error("Could not validate credentials")
     return user
+
+def require_admin(current_user: User = Depends(get_current_user)) -> User:
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin privileges required",
+        )
+    return current_user
+
 
 def get_user_from_refresh_token(refresh_token: str, db: Session) -> User:
     token_data = decode_token(

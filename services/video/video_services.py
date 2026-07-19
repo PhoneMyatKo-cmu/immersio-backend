@@ -2,7 +2,7 @@ import isodate
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
-from models.video import Video
+from models.video import Video, VideoSource
 
 
 def check_video_exists(youtube_video_id: str, db: Session) -> Video | None:
@@ -16,7 +16,13 @@ def check_video_exists(youtube_video_id: str, db: Session) -> Video | None:
     return result
 
 
-def save_video(meta_data: dict, suitability: dict, db: Session):
+def save_video(
+    meta_data: dict,
+    suitability: dict,
+    db: Session,
+    source: VideoSource = VideoSource.user_submitted,
+    added_by: int | None = None,
+):
     """save video metadata to the database"""
 
     # duration_funtion to be implemented later
@@ -29,6 +35,8 @@ def save_video(meta_data: dict, suitability: dict, db: Session):
             duration_seconds=isodate.parse_duration(
                 meta_data["duration"]
             ).total_seconds(),
+            source=source,
+            added_by=added_by,
         )
         db.add(video)
         db.flush()
