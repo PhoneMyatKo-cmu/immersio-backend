@@ -33,6 +33,7 @@ htmlcov/
 Thumbs.db
 
 # custom
+CLAUDE.md
 services/romaji_test.py
 utils/data/*
 utils/test*.py

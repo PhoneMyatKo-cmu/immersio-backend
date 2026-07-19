@@ -1,6 +1,6 @@
 from datetime import datetime
 from sqlalchemy import String, DateTime, Enum
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 import enum
 
 from db.base import Base
@@ -61,3 +61,5 @@ class User(Base):
         default=datetime.utcnow,
         nullable=False
     )
+
+    added_videos = relationship("Video", back_populates="added_by_user")
