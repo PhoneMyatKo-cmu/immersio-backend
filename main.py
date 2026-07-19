@@ -8,6 +8,7 @@ from api.v1.endpoints import (
     caption,
     sentence,
     shadowing,
+    user_admin,
     video,
     video_admin,
     video_submission,
@@ -63,3 +64,4 @@ app.include_router(video.router)
 app.include_router(shadowing.router)
 app.include_router(sentence.router)
 app.include_router(video_admin.router)
+app.include_router(user_admin.router)

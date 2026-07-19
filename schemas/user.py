@@ -52,6 +52,32 @@ class UserUpdate(BaseModel):
     last_name: str | None = Field(default=None, min_length=1, max_length=100)
     estimated_level: EstimatedLevel | None = None
 
+
+class UserAdminRead(BaseModel):
+    id: int
+    first_name: str
+    last_name: str
+    email: EmailStr
+    estimated_level: EstimatedLevel
+    role: UserRole
+    is_active: bool
+    created_at: datetime
+    last_login_at: datetime | None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class UserAdminListResponse(BaseModel):
+    items: list[UserAdminRead]
+    total: int
+    page: int
+    page_size: int
+    total_pages: int
+
+
+class UserRoleUpdate(BaseModel):
+    role: UserRole
+
 class UserUpdatePassword(BaseModel):
     current_password: str = Field(min_length=1, max_length=128)
     new_password: str = Field(min_length=8, max_length=128)
