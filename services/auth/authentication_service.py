@@ -64,6 +64,11 @@ def authenticate_user(db: Session, email: str, password: str) -> UserRead | None
     user = get_user_by_email(email, db)
     if user is None or not verify_password(password, user.password_hash):
         return None
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Account is deactivated",
+        )
     user.last_login_at = datetime.utcnow()
     db.commit()
     return user
@@ -168,6 +173,11 @@ def get_current_user(
     user = get_user_by_email(token_data.sub, db)
     if user is None:
         raise _credentials_error("Could not validate credentials")
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Account is deactivated",
+        )
     return user
 
 def require_admin(current_user: User = Depends(get_current_user)) -> User:
@@ -190,4 +200,9 @@ def get_user_from_refresh_token(refresh_token: str, db: Session) -> User:
     user = get_user_by_email(token_data.sub, db)
     if user is None:
         raise _credentials_error("Could not validate refresh token")
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Account is deactivated",
+        )
     return user
