@@ -1,5 +1,5 @@
 from sqlalchemy import ForeignKey, UniqueConstraint
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from db.base import Base
 
@@ -21,3 +21,6 @@ class VideoVocabulary(Base):
     )
 
     __table_args__ = (UniqueConstraint("video_id", "vocab_id", name="uq_video_vocab"),)
+
+    # Relationships
+    video = relationship("Video", backref="vocabulary_entries")

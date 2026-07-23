@@ -7,6 +7,7 @@ from api.v1.endpoints import (
     ai_explanation,
     caption,
     sentence,
+    session,
     shadowing,
     video,
     video_submission,
@@ -61,3 +62,4 @@ app.include_router(ai_explanation.router)
 app.include_router(video.router)
 app.include_router(shadowing.router)
 app.include_router(sentence.router)
+app.include_router(session.router)
