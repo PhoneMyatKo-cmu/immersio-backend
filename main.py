@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from api.v1.endpoints import (
     ai_explanation,
     caption,
+    learning_progress,
     sentence,
     session,
     shadowing,
@@ -63,3 +64,4 @@ app.include_router(video.router)
 app.include_router(shadowing.router)
 app.include_router(sentence.router)
 app.include_router(session.router)
+app.include_router(learning_progress.router)

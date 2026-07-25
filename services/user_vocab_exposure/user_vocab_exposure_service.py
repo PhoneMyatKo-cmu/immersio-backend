@@ -28,8 +28,9 @@ def save_user_vocab_exposure(session_data: LearningSession, db: Session):
     intervals = session_data.video_intervals
     user_id = session_data.user_id
     video_id = session_data.video_id
-    now = datetime.fromtimestamp(session_data.end_time)  # Use the end_time of the session as the current time
+    now = session_data.end_time # Use the end_time of the session as the current time
 
+    # Fetch existing exposures and sessions for the user and video
     existing_exposures = get_user_vocab_exposure(user_id, db)
     existing_sessions = get_learning_sessions_by_user_and_video(user_id, video_id, db)
     existing_session_vocabs = get_session_vocab_batch([session.id for session in existing_sessions], db)
@@ -42,7 +43,7 @@ def save_user_vocab_exposure(session_data: LearningSession, db: Session):
 
     captions = video.captions
 
-    print(f"Processing vocabulary exposure for user {user_id} and video {video_id}.")
+    # Process each vocabulary profile and check for exposure within the session intervals
     for vocab_profile in video_vocab_profiles:
         if any(sv.vocab_id == vocab_profile.id for sv in existing_session_vocabs):
             print(f"Vocabulary {vocab_profile.vocab_id} already recorded for this session. Skipping.")
@@ -97,3 +98,23 @@ def save_user_vocab_exposure(session_data: LearningSession, db: Session):
                 
     db.commit()
 
+
+def get_vocab_seen_by_user(user_id: int, db: Session):
+    """
+    Retrieve all vocabulary seen by a specific user.
+    """
+    return (
+        db.query(UserVocabularyExposure)
+        .filter(UserVocabularyExposure.user_id == user_id)
+        .all()
+    )
+
+def get_vocab_known_by_user(user_id: int, db: Session):
+    """
+    Retrieve all vocabulary known by a specific user.
+    """
+    return (
+        db.query(UserVocabularyExposure)
+        .filter(UserVocabularyExposure.user_id == user_id, UserVocabularyExposure.status == "KNOW")
+        .all()
+    )
