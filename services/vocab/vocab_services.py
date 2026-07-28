@@ -53,3 +53,10 @@ def get_vocab_by_surface_form(surface_form: str, db: Session) -> Vocabulary | No
     ).first()
 
     return result
+
+def get_vocab_by_id(vocab_id: int, db: Session) -> Vocabulary | None:
+    result = db.scalars(
+        select(Vocabulary).where(Vocabulary.id == vocab_id)
+    ).first()
+
+    return result

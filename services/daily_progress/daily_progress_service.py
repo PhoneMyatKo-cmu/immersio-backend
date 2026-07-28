@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from models.daily_progress import DailyProgress
 from models.learning_session import LearningSession
 from services.session.session_service import get_learning_sessions_by_user_and_day
-from tests.utils.daily_progress_helper import calculate_streak, create_daily_progress, update_daily_progress
+from utils.daily_progress_helper import calculate_streak, create_daily_progress, update_daily_progress
 
 def save_daily_progress(session: LearningSession, db: Session):
     """

@@ -7,10 +7,11 @@ from fastapi.params import Depends
 from sqlalchemy.orm import Session
 
 from db.base import get_db
+from services.auth.authentication_service import get_current_user
 from services.daily_progress.daily_progress_service import get_all_time_progress, get_daily_progress_by_date_range
 from services.user_vocab_exposure.user_vocab_exposure_service import get_vocab_known_by_user
-from tests.utils.daily_progress_helper import calculate_total_videos_watched, summarize_daily_progresses
-from tests.utils.daily_progress_helper import calculate_total_videos_watched
+from utils.daily_progress_helper import calculate_total_videos_watched, summarize_daily_progresses
+from utils.daily_progress_helper import calculate_total_videos_watched
 
 
 router = APIRouter(prefix="/learning-progress")
@@ -18,7 +19,8 @@ router = APIRouter(prefix="/learning-progress")
 @router.get("/{user_id}")
 async def get_learning_progress(
     user_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
 ):
     """
     Fetches the all-time learning progress for the given user.
@@ -40,7 +42,8 @@ async def get_learning_progress_chart(
     user_id: int,
     type: str,
     period_days: int | str = 7,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
 ):
     """
     Fetches the learning progress chart data for the given user and type.
@@ -78,12 +81,15 @@ async def get_learning_progress_chart(
     else:
         return {"error": "Invalid type specified."}
 
+    response = []
+    for i in range(period_days):
+        day = start_date + timedelta(days=i)
+        if not any(progress.day == day for progress in daily_progresses):
+            response.append({"day": day, "value": 0})
+        else:
+            response.append(filter(lambda x: x["day"] == day, chart_data).__next__())
+
     return {
-        "chart_data": chart_data,
+        "chart_data": response,
         "previous_summary": previous_summary
     }
-
-@router.get("/test/{user_id}")
-async def test_learning_progress(user_id: int, db: Session = Depends(get_db)):
-    known_vocab = get_vocab_known_by_user(user_id, db)
-    return {"known_vocab": known_vocab}
