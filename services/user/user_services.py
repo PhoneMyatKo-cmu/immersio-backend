@@ -2,12 +2,11 @@ from datetime import datetime, timedelta
 
 from fastapi import HTTPException, status
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
 
 from models.user import EstimatedLevel, User, UserRole
 from schemas.user import UserUpdate
-
 
 
 def save_user(user: User, db: Session) -> User:
@@ -24,6 +23,7 @@ def save_user(user: User, db: Session) -> User:
 
     db.refresh(user)
     return user
+
 
 def get_user_by_email(email: str, db: Session) -> User | None:
     return db.query(User).filter(User.email == email.lower()).first()
@@ -72,21 +72,31 @@ def get_user_stats(db: Session) -> dict:
     """Aggregate platform-wide user stats for the admin dashboard."""
     now = datetime.utcnow()
 
-    total = db.scalar(select(func.count()).select_from(User)) or 0
+    total = (
+        db.scalar(
+            select(func.count()).select_from(User).where(User.role == UserRole.LEARNER)
+        )
+        or 0
+    )
     active = (
         db.scalar(
-            select(func.count()).select_from(User).where(User.is_active.is_(True))
+            select(func.count())
+            .select_from(User)
+            .where(User.role == UserRole.LEARNER)
+            .where(User.is_active.is_(True))
         )
         or 0
     )
 
-    role_rows = db.execute(
-        select(User.role, func.count()).group_by(User.role)
-    ).all()
-    role_counts = {role: count for role, count in role_rows}
+    # role_rows = db.execute(
+    #     select(User.role, func.count()).group_by(User.role)
+    # ).all()
+    # role_counts = {role: count for role, count in role_rows}
 
     level_rows = db.execute(
-        select(User.estimated_level, func.count()).group_by(User.estimated_level)
+        select(User.estimated_level, func.count())
+        .where(User.role == UserRole.LEARNER)
+        .group_by(User.estimated_level)
     ).all()
     level_counts = {level: count for level, count in level_rows}
 
@@ -95,6 +105,7 @@ def get_user_stats(db: Session) -> dict:
             db.scalar(
                 select(func.count())
                 .select_from(User)
+                .where(User.role == UserRole.LEARNER)
                 .where(column >= now - timedelta(days=days))
             )
             or 0
@@ -104,10 +115,10 @@ def get_user_stats(db: Session) -> dict:
         "total": total,
         "active": active,
         "inactive": total - active,
-        "by_role": {
-            "admin": role_counts.get(UserRole.ADMIN, 0),
-            "learner": role_counts.get(UserRole.LEARNER, 0),
-        },
+        # "by_role": {
+        #     "admin": role_counts.get(UserRole.ADMIN, 0),
+        #     "learner": role_counts.get(UserRole.LEARNER, 0),
+        # },
         "by_level": {
             "beginner": level_counts.get(EstimatedLevel.beginner, 0),
             "intermediate": level_counts.get(EstimatedLevel.intermediate, 0),
@@ -146,6 +157,7 @@ def change_user_role(user_id: int, role: UserRole, db: Session) -> User | None:
     db.refresh(user)
     return user
 
+
 def update_user(current_user: User, updated_user: UserUpdate, db: Session) -> User:
     for field, value in updated_user.model_dump(exclude_unset=True).items():
         setattr(current_user, field, value)
@@ -159,6 +171,7 @@ def update_user(current_user: User, updated_user: UserUpdate, db: Session) -> Us
     db.refresh(current_user)
     return current_user
 
+
 def delete_user(user: User, db: Session):
     try:
         db.delete(user)
@@ -168,8 +181,10 @@ def delete_user(user: User, db: Session):
         print(e)
         raise HTTPException(status_code=500, detail="Failed to delete user") from e
 
+
 def update_user_password(current_user: User, new_password: str, db: Session) -> User:
     from services.auth.authentication_service import hash_password
+
     current_user.password_hash = hash_password(new_password)
     try:
         db.commit()

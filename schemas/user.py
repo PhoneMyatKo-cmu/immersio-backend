@@ -44,6 +44,7 @@ class UserRead(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+
 class UserUpdate(BaseModel):
     # Self-service profile update. Deliberately excludes `role` (privilege
     # escalation — only an admin may change roles) and `email` (it is the JWT
@@ -94,12 +95,13 @@ class UserStatsResponse(BaseModel):
     total: int
     active: int
     inactive: int
-    by_role: RoleBreakdown
+    # by_role: RoleBreakdown
     by_level: LevelBreakdown
     signups_last_7_days: int
     signups_last_30_days: int
     active_last_7_days: int
     active_last_30_days: int
+
 
 class UserUpdatePassword(BaseModel):
     current_password: str = Field(min_length=1, max_length=128)
@@ -111,6 +113,7 @@ class UserUpdatePassword(BaseModel):
         if len(value.encode("utf-8")) > 72:
             raise ValueError("Password must be 72 bytes or fewer")
         return value
+
 
 class Token(BaseModel):
     access_token: str
