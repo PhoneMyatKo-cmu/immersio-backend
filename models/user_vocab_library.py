@@ -48,6 +48,10 @@ class UserSavedVocabulary(Base):
 
     interval_days: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
+    repetitions: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+    lapses: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
     next_review_date: Mapped[datetime] = mapped_column(DateTime, nullable=True)
 
     last_review_date: Mapped[datetime] = mapped_column(DateTime, nullable=True)
