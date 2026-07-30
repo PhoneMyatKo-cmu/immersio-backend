@@ -73,3 +73,9 @@ def get_translation(caption_id: int, db: Session):
         select(Caption).where(Caption.id == caption_id)
     ).first()
     return caption.translation
+
+def get_caption_by_id(caption_id: int, db: Session):
+    caption = db.scalars(
+        select(Caption).where(Caption.id == caption_id)
+    ).first()
+    return caption

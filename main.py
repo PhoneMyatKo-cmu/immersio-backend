@@ -10,6 +10,7 @@ from api.v1.endpoints import (
     sentence,
     session,
     shadowing,
+    spaced_repetition_review,
     user_vocab_exposure,
     video,
     video_submission,
@@ -67,3 +68,4 @@ app.include_router(sentence.router)
 app.include_router(session.router)
 app.include_router(learning_progress.router)
 app.include_router(user_vocab_exposure.router)
+app.include_router(spaced_repetition_review.router)

@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -33,4 +35,12 @@ def save_vocab_to_library(saveVocab: UserVocabSave, user_id: int, db: Session):
 def get_user_saved_vocab(user_id: int, db: Session):
     return db.query(UserSavedVocabulary).filter(
         UserSavedVocabulary.user_id == user_id
+    ).all()
+
+def get_review_vocab_by_user(user_id: int, db: Session):
+    today = datetime.now().date()
+    return db.query(UserSavedVocabulary).filter(
+        UserSavedVocabulary.user_id == user_id,
+        UserSavedVocabulary.srs_state != "mastered",
+        UserSavedVocabulary.next_review_date <= today
     ).all()
