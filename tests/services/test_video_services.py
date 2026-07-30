@@ -23,15 +23,18 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 try:
-    from models.video import Video
+    from models.video import Video, VideoSource
     from services.video.video_services import (
         change_shadowing_status,
         check_video_exists,
         get_total_video_count,
         get_video_by_id,
         get_video_by_youtube_video_id,
+        get_video_stats,
         get_videos,
+        get_videos_admin,
         save_video,
+        soft_delete_video,
     )
 except Exception as exc:  # isodate / import-chain deps missing
     pytest.skip(f"video_services unavailable: {exc}", allow_module_level=True)
@@ -231,3 +234,241 @@ def test_change_shadowing_status_sets_flag_true(db_session):
     change_shadowing_status(video.id, db_session)
     refreshed = db_session.scalars(select(Video).where(Video.id == video.id)).first()
     assert refreshed.is_shadowing_ready is True
+
+
+# ---------------------------------------------------------------------------
+# get_videos_admin  (admin list / filter)
+#
+# Runs on the SQLite service_db fixture: title ILIKE is SQLite-safe and only the
+# videos table is touched (FK enforcement is off, so added_by needs no users row).
+# ---------------------------------------------------------------------------
+def _admin_video(
+    db,
+    youtube_video_id,
+    title="動画",
+    created_at=None,
+    source=VideoSource.user_submitted,
+    is_active=True,
+    added_by=None,
+    is_shadowing_ready=False,
+) -> Video:
+    from datetime import datetime
+
+    video = Video(
+        youtube_video_id=youtube_video_id,
+        title=title,
+        thumbnail_url=f"https://example.com/{youtube_video_id}.jpg",
+        channel_name="Immersio",
+        duration_seconds=180,
+        created_at=created_at or datetime(2026, 1, 1, 12, 0, 0),
+        source=source,
+        is_active=is_active,
+        added_by=added_by,
+        is_shadowing_ready=is_shadowing_ready,
+    )
+    db.add(video)
+    db.commit()
+    db.refresh(video)
+    return video
+
+
+def _ids(rows) -> set[str]:
+    return {v.youtube_video_id for v in rows}
+
+
+def test_get_videos_admin_empty_db(service_db):
+    rows, total = get_videos_admin(service_db)
+
+    assert rows == []
+    assert total == 0
+
+
+def test_get_videos_admin_no_filters_orders_by_created_at_desc(service_db):
+    from datetime import datetime
+
+    _admin_video(service_db, "old", created_at=datetime(2026, 1, 1))
+    _admin_video(service_db, "new", created_at=datetime(2026, 1, 3))
+    _admin_video(service_db, "mid", created_at=datetime(2026, 1, 2))
+
+    rows, total = get_videos_admin(service_db)
+
+    assert [v.youtube_video_id for v in rows] == ["new", "mid", "old"]
+    assert total == 3
+
+
+def test_get_videos_admin_each_filter_narrows(service_db):
+    _admin_video(
+        service_db, "curated", title="日本語 Grammar",
+        source=VideoSource.curated, is_active=True, added_by=1,
+    )
+    _admin_video(
+        service_db, "user", title="English Lesson",
+        source=VideoSource.user_submitted, is_active=True, added_by=2,
+    )
+    _admin_video(
+        service_db, "inactive", title="Old Nihongo",
+        source=VideoSource.user_submitted, is_active=False, added_by=1,
+    )
+
+    # source
+    rows, total = get_videos_admin(service_db, source=VideoSource.curated)
+    assert _ids(rows) == {"curated"} and total == 1
+
+    # is_active — admin can see soft-deleted ones
+    rows, total = get_videos_admin(service_db, is_active=False)
+    assert _ids(rows) == {"inactive"} and total == 1
+    rows, total = get_videos_admin(service_db, is_active=True)
+    assert _ids(rows) == {"curated", "user"} and total == 2
+
+    # default (is_active=None) returns both active and inactive
+    rows, total = get_videos_admin(service_db)
+    assert _ids(rows) == {"curated", "user", "inactive"} and total == 3
+
+    # added_by
+    rows, total = get_videos_admin(service_db, added_by=1)
+    assert _ids(rows) == {"curated", "inactive"} and total == 2
+
+    # search: title, partial + case-insensitive
+    rows, total = get_videos_admin(service_db, search="grammar")
+    assert _ids(rows) == {"curated"} and total == 1
+    rows, total = get_videos_admin(service_db, search="zzz")
+    assert rows == [] and total == 0
+
+
+def test_get_videos_admin_combined_filters_use_and_semantics(service_db):
+    _admin_video(
+        service_db, "match", title="日本語 Match",
+        source=VideoSource.curated, is_active=True,
+    )
+    # wrong source
+    _admin_video(
+        service_db, "decoy-source", title="日本語 Match",
+        source=VideoSource.user_submitted, is_active=True,
+    )
+    # wrong active state
+    _admin_video(
+        service_db, "decoy-inactive", title="日本語 Match",
+        source=VideoSource.curated, is_active=False,
+    )
+
+    rows, total = get_videos_admin(
+        service_db, search="日本語", source=VideoSource.curated, is_active=True
+    )
+
+    assert _ids(rows) == {"match"}
+    assert total == 1
+
+
+def test_get_videos_admin_pagination(service_db):
+    from datetime import datetime
+
+    # newest = day 5; days 3-5 curated, days 1-2 user_submitted
+    for day in range(1, 6):
+        _admin_video(
+            service_db,
+            f"v{day}",
+            created_at=datetime(2026, 1, day),
+            source=VideoSource.curated if day >= 3 else VideoSource.user_submitted,
+        )
+
+    rows, total = get_videos_admin(service_db, page=1, page_size=2)
+    assert [v.youtube_video_id for v in rows] == ["v5", "v4"]
+    assert total == 5
+
+    rows, total = get_videos_admin(service_db, page=3, page_size=2)
+    assert [v.youtube_video_id for v in rows] == ["v1"]
+    assert total == 5
+
+    rows, total = get_videos_admin(service_db, page=99, page_size=2)
+    assert rows == []
+    assert total == 5
+
+    # total reflects the filtered set (3 curated), not the page (2 rows)
+    rows, total = get_videos_admin(
+        service_db, source=VideoSource.curated, page=1, page_size=2
+    )
+    assert len(rows) == 2
+    assert total == 3
+
+
+# ---------------------------------------------------------------------------
+# get_video_stats  (admin catalog stats)
+# ---------------------------------------------------------------------------
+def test_get_video_stats_empty_db(service_db):
+    stats = get_video_stats(service_db)
+
+    assert stats["total"] == 0
+    assert stats["active"] == 0
+    assert stats["inactive"] == 0
+    assert stats["by_source"] == {"curated": 0, "user_submitted": 0}
+    assert stats["shadowing_ready"] == 0
+    assert stats["shadowing_not_ready"] == 0
+    assert stats["added_last_7_days"] == 0
+    assert stats["added_last_30_days"] == 0
+
+
+def test_get_video_stats_counts_and_by_source(service_db):
+    _admin_video(service_db, "c1", source=VideoSource.curated, is_active=True)
+    _admin_video(service_db, "c2", source=VideoSource.curated, is_active=False)
+    _admin_video(service_db, "u1", source=VideoSource.user_submitted, is_active=True)
+    _admin_video(service_db, "u2", source=VideoSource.user_submitted, is_active=True)
+
+    stats = get_video_stats(service_db)
+
+    assert stats["total"] == 4
+    assert stats["active"] == 3
+    assert stats["inactive"] == 1
+    # by_source counts all videos regardless of is_active
+    assert stats["by_source"] == {"curated": 2, "user_submitted": 2}
+
+
+def test_get_video_stats_shadowing_readiness(service_db):
+    _admin_video(service_db, "r1", is_shadowing_ready=True)
+    _admin_video(service_db, "r2", is_shadowing_ready=True)
+    _admin_video(service_db, "nr1", is_shadowing_ready=False)
+
+    stats = get_video_stats(service_db)
+
+    assert stats["shadowing_ready"] == 2
+    assert stats["shadowing_not_ready"] == 1  # total - ready
+
+
+def test_get_video_stats_time_windows(service_db):
+    from datetime import datetime, timedelta
+
+    now = datetime.utcnow()
+    _admin_video(service_db, "d3", created_at=now - timedelta(days=3))
+    _admin_video(service_db, "d10", created_at=now - timedelta(days=10))
+    _admin_video(service_db, "d40", created_at=now - timedelta(days=40))
+
+    stats = get_video_stats(service_db)
+
+    assert stats["added_last_7_days"] == 1     # only d3
+    assert stats["added_last_30_days"] == 2    # d3 + d10
+
+
+# ---------------------------------------------------------------------------
+# soft_delete_video
+# ---------------------------------------------------------------------------
+def test_soft_delete_video_returns_none_when_missing(service_db):
+    assert soft_delete_video(999, service_db) is None
+
+
+def test_soft_delete_video_deactivates_active_video(service_db):
+    video = _admin_video(service_db, "active", is_active=True)
+
+    result = soft_delete_video(video.id, service_db)
+
+    assert result is video
+    assert result.is_active is False
+    # persisted, not just in-memory
+    assert get_video_by_id(video.id, service_db).is_active is False
+
+
+def test_soft_delete_video_is_idempotent_for_inactive_video(service_db):
+    video = _admin_video(service_db, "inactive", is_active=False)
+
+    result = soft_delete_video(video.id, service_db)
+
+    assert result is video
+    assert result.is_active is False
