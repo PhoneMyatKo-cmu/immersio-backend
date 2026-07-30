@@ -23,6 +23,7 @@ def save_vocab_to_library(saveVocab: UserVocabSave, user_id: int, db: Session):
         video_id=saveVocab.video_id,
         caption_id=saveVocab.caption_id,
         timestamp=saveVocab.timestamp,
+        next_review_date=datetime.now().date(),  # Set the next review date to today
     )
 
     try:
