@@ -101,9 +101,7 @@ def get_video_by_id(id: int, db: Session):
 
 def get_videos(db: Session, search: str = None, page: int = 1, page_size: int = 6):
     stmt = (
-        select(Video)
-        .where(Video.is_active.is_(True))
-        .order_by(Video.created_at.desc())
+        select(Video).where(Video.is_active.is_(True)).order_by(Video.created_at.desc())
     )
 
     if search:
@@ -222,18 +220,18 @@ def get_video_stats(db: Session, top_contributors_limit: int = 5) -> dict:
         or 0
     )
 
-    contributor_rows = db.execute(
-        select(
-            Video.added_by,
-            func.concat(User.first_name, " ", User.last_name),
-            func.count(),
-        )
-        .join(User, User.id == Video.added_by)
-        .where(Video.added_by.is_not(None))
-        .group_by(Video.added_by, User.first_name, User.last_name)
-        .order_by(func.count().desc())
-        .limit(top_contributors_limit)
-    ).all()
+    # contributor_rows = db.execute(
+    #     select(
+    #         Video.added_by,
+    #         func.concat(User.first_name, " ", User.last_name),
+    #         func.count(),
+    #     )
+    #     .join(User, User.id == Video.added_by)
+    #     .where(Video.added_by.is_not(None))
+    #     .group_by(Video.added_by, User.first_name, User.last_name)
+    #     .order_by(func.count().desc())
+    #     .limit(top_contributors_limit)
+    # ).all()
 
     return {
         "total": total,
@@ -247,10 +245,10 @@ def get_video_stats(db: Session, top_contributors_limit: int = 5) -> dict:
         "shadowing_not_ready": total - ready,
         "added_last_7_days": last_7,
         "added_last_30_days": last_30,
-        "top_contributors": [
-            {"added_by": added_by, "name": name, "count": count}
-            for added_by, name, count in contributor_rows
-        ],
+        # "top_contributors": [
+        #     {"added_by": added_by, "name": name, "count": count}
+        #     for added_by, name, count in contributor_rows
+        # ],
     }
 
 

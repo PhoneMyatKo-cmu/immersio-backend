@@ -63,4 +63,4 @@ class VideoStatsResponse(BaseModel):
     shadowing_not_ready: int
     added_last_7_days: int
     added_last_30_days: int
-    top_contributors: list[TopContributor]
+    # top_contributors: list[TopContributor]
