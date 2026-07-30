@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from db.base import Base
 
@@ -22,3 +22,6 @@ class VocabularyReviewLog(Base):
     scheduled_interval_days: Mapped[int] = mapped_column(Integer, nullable=False)
 
     elapsed_interval_days: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    # Relationships
+    user_saved_vocab = relationship("UserSavedVocabulary", backref="review_logs")

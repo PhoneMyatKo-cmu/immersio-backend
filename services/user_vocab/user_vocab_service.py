@@ -44,3 +44,8 @@ def get_review_vocab_by_user(user_id: int, db: Session):
         UserSavedVocabulary.srs_state != "mastered",
         UserSavedVocabulary.next_review_date <= today
     ).all()
+
+def get_user_vocab_by_id(user_vocab_id: int, db: Session):
+    return db.query(UserSavedVocabulary).filter(
+        UserSavedVocabulary.id == user_vocab_id
+    ).first()
