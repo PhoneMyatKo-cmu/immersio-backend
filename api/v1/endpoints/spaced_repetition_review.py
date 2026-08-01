@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pytest import Session
 
 from db.base import Base, get_db
+from services.auth.authentication_service import get_current_user
 from services.caption.caption_services import get_caption_by_id
 from services.user_vocab.user_vocab_service import get_review_vocab_by_user, get_user_vocab_by_user_and_vocab_id
 from services.video.video_services import get_youtube_video_id_by_video_id
@@ -13,10 +14,13 @@ from utils.spaced_repetition_review_helper import update_review_card
 router = APIRouter(prefix="/review")
 
 @router.get("/{user_id}")
-def get_reviewable_vocab(user_id: int, db: Session = Depends(get_db)):
+def get_reviewable_vocab(user_id: int, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
     """
     Fetches the user's vocabulary library that is due for review.
     """
+    if not current_user or current_user.id != user_id:
+        raise HTTPException(status_code=403, detail="Access denied.")
+
     reviewable_vocab = get_review_vocab_by_user(user_id, db)
     vocab_ids = [vocab.vocab_id for vocab in reviewable_vocab]
     vocab_details = [get_vocab_by_id(vocab_id, db) for vocab_id in vocab_ids]
@@ -48,11 +52,15 @@ def review_vocab(
     user_id: int,
     vocab_id: int,
     grade: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
 ):
     """
     Updates the vocabulary review data based on the user's review grade.
     """
+    if not current_user or current_user.id != user_id:
+        raise HTTPException(status_code=403, detail="Access denied.")
+
     vocab_card = get_user_vocab_by_user_and_vocab_id(user_id, vocab_id, db)
     if not vocab_card or vocab_card.user_id != user_id:
         raise HTTPException(status_code=404, detail="Vocabulary card not found for this user.")
