@@ -20,6 +20,7 @@ def get_user_vocab(user_id: int, db: Session = Depends(get_db)):
     for vocab in vocab_details:
         if vocab:
             response.append({
+                "vocab_id": vocab.id,
                 "japanese_form": vocab.japanese_form,
                 "reading": vocab.reading,
                 "lemma": vocab.lemma,

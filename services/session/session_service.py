@@ -1,5 +1,5 @@
 
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 from sqlalchemy.orm import Session
 
@@ -60,5 +60,5 @@ def get_learning_sessions_by_user_and_day(user_id: int, day: date, db: Session):
     return db.query(LearningSession).filter(
         LearningSession.user_id == user_id,
         LearningSession.end_time >= day,
-        LearningSession.end_time < day.replace(day=day.day + 1)
+        LearningSession.end_time < day + timedelta(days=1)
     ).all()

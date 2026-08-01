@@ -110,5 +110,18 @@ def get_saved_vocab(
 
     saved_vocab = get_user_saved_vocab(user_id, db)
     vocab_details = [get_vocab_by_id(vocab.vocab_id, db) for vocab in saved_vocab]
+    response = []
+    for vocab, saved in zip(vocab_details, saved_vocab):
+        if vocab:
+            response.append({
+                "vocab_id": vocab.id,
+                "japanese_form": vocab.japanese_form,
+                "reading": vocab.reading,
+                "lemma": vocab.lemma,
+                "meanings": vocab.meanings,
+                "estimated_level": vocab.estimated_level,
+                "srs_state": saved.srs_state,
+                "next_review_date": saved.next_review_date
+            })
 
-    return {"saved_vocab": vocab_details}
+    return {"saved_vocab": response}

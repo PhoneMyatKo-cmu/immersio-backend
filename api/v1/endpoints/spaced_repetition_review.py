@@ -3,7 +3,7 @@ from pytest import Session
 
 from db.base import Base, get_db
 from services.caption.caption_services import get_caption_by_id
-from services.user_vocab.user_vocab_service import get_review_vocab_by_user, get_user_vocab_by_id
+from services.user_vocab.user_vocab_service import get_review_vocab_by_user, get_user_vocab_by_user_and_vocab_id
 from services.video.video_services import get_youtube_video_id_by_video_id
 from services.vocab.vocab_services import get_vocab_by_id
 from services.vocab_review_log.vocab_review_log_service import save_vocabulary_review_log
@@ -53,12 +53,11 @@ def review_vocab(
     """
     Updates the vocabulary review data based on the user's review grade.
     """
-    vocab_card = get_user_vocab_by_id(vocab_id, db)
+    vocab_card = get_user_vocab_by_user_and_vocab_id(user_id, vocab_id, db)
     if not vocab_card or vocab_card.user_id != user_id:
         raise HTTPException(status_code=404, detail="Vocabulary card not found for this user.")
 
     update_review_card(vocab_card, grade)
     save_vocabulary_review_log(vocab_card, grade, db)
     db.commit()
-    return {"message": "Review data updated successfully.",
-            "data": vocab_card}
+    return {"message": "Review data updated successfully."}

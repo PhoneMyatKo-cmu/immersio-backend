@@ -46,7 +46,8 @@ def get_review_vocab_by_user(user_id: int, db: Session):
         UserSavedVocabulary.next_review_date <= today
     ).all()
 
-def get_user_vocab_by_id(user_vocab_id: int, db: Session):
+def get_user_vocab_by_user_and_vocab_id(user_id: int, vocab_id: int, db: Session):
     return db.query(UserSavedVocabulary).filter(
-        UserSavedVocabulary.id == user_vocab_id
+        UserSavedVocabulary.user_id == user_id,
+        UserSavedVocabulary.vocab_id == vocab_id
     ).first()
