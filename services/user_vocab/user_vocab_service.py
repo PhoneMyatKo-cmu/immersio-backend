@@ -29,3 +29,8 @@ def save_vocab_to_library(saveVocab: UserVocabSave, user_id: int, db: Session):
     except Exception as e:
         print(e)
         raise e
+
+def get_user_saved_vocab(user_id: int, db: Session):
+    return db.query(UserSavedVocabulary).filter(
+        UserSavedVocabulary.user_id == user_id
+    ).all()

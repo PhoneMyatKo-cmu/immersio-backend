@@ -14,9 +14,10 @@ from services.auth.authentication_service import get_current_user
 from services.caption.caption_services import get_caption_translation
 from services.user_vocab.user_vocab_service import (
     check_duplicate_vocab,
+    get_user_saved_vocab,
     save_vocab_to_library,
 )
-from services.vocab.vocab_services import get_vocab_by_surface_form
+from services.vocab.vocab_services import get_vocab_by_id, get_vocab_by_surface_form
 
 router = APIRouter(prefix="/vocab")
 
@@ -95,3 +96,19 @@ def check_duplicate_vocab_per_user(
         )
 
     return {"saved": check_duplicate_vocab(current_user.id, vocab_id, db) is not None}
+
+@router.get("/saved/{user_id}")
+def get_saved_vocab(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: UserRead = Depends(get_current_user),
+):
+    if not current_user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthenticated"
+        )
+
+    saved_vocab = get_user_saved_vocab(user_id, db)
+    vocab_details = [get_vocab_by_id(vocab.vocab_id, db) for vocab in saved_vocab]
+
+    return {"saved_vocab": vocab_details}

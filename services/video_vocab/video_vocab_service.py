@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 def save_video_vocab_profile(
-    video_id: int, surface_forms: list[str], db: Session
+    video_id: int, surface_forms: list[str], vocab_caption_map: dict[str, list[int]], db: Session
 ) -> None:
     """
     Save vocabulary profile for a video.
@@ -30,24 +30,41 @@ def save_video_vocab_profile(
 
     form_to_id = {row.japanese_form: row.id for row in vocab_rows}
 
+    existing_rows = (
+        db.query(VideoVocabulary)
+        .filter(VideoVocabulary.video_id == video_id)
+        .filter(VideoVocabulary.vocab_id.in_(form_to_id.values()))
+        .all()
+    )
+    existing_map = {row.vocab_id: row for row in existing_rows}
+
     for form, frequency in freq_map.items():
         vocab_id = form_to_id.get(form)
         if not vocab_id:
             continue  # word not in global vocab — skip
 
-        existing = (
-            db.query(VideoVocabulary)
-            .filter_by(video_id=video_id, vocab_id=vocab_id)
-            .first()
-        )
-
+        existing = existing_map.get(vocab_id)
         if existing:
             existing.frequency += frequency
         else:
-            db.add(
-                VideoVocabulary(
-                    video_id=video_id, vocab_id=vocab_id, frequency=frequency
-                )
+            row = VideoVocabulary(video_id=video_id, vocab_id=vocab_id, frequency=frequency)
+            db.add(row)
+            existing_map[vocab_id] = row  # Add to existing_map for caption_indices update
+
+    for form, caption_indices in vocab_caption_map.items():
+        vocab_id = form_to_id.get(form)
+        if not vocab_id:
+            continue  # word not in global vocab — skip
+
+        existing = existing_map.get(vocab_id)
+        
+        caption_indices_str = ",".join(map(str, caption_indices))
+
+        if existing:
+            existing.caption_indices = (
+                existing.caption_indices + "," + caption_indices_str
+                if existing.caption_indices
+                else caption_indices_str
             )
 
     db.commit()
