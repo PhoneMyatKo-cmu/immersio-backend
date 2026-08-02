@@ -1,7 +1,7 @@
 import enum
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum, Float, ForeignKey, Integer, UniqueConstraint
+from sqlalchemy import Boolean, DateTime, Enum, Float, ForeignKey, Integer, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from db.base import Base
@@ -60,6 +60,9 @@ class UserSavedVocabulary(Base):
         DateTime, default=datetime.utcnow, nullable=False
     )
 
+    is_deleted: Mapped[bool] = mapped_column(
+        Boolean, default=False, nullable=False
+    )
     # Optional relationships (useful for ORM navigation)
     user = relationship("User", backref="saved_vocabularies")
     vocab = relationship("Vocabulary", backref="user_saves")

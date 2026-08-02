@@ -14,6 +14,7 @@ from services.auth.authentication_service import get_current_user
 from services.caption.caption_services import get_caption_translation
 from services.user_vocab.user_vocab_service import (
     check_duplicate_vocab,
+    delete_user_vocab,
     get_user_saved_vocab,
     save_vocab_to_library,
 )
@@ -125,3 +126,23 @@ def get_saved_vocab(
             })
 
     return {"saved_vocab": response}
+
+@router.delete("/delete/{user_id}/{vocab_id}")
+def delete_saved_vocab(
+    user_id: int,
+    vocab_id: int,
+    db: Session = Depends(get_db),
+    current_user: UserRead = Depends(get_current_user),
+):
+    if not current_user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthenticated"
+        )
+
+    deleted = delete_user_vocab(user_id, vocab_id, db)
+    if not deleted:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Vocab not found in user's library"
+        )
+
+    return {"message": "success"}
