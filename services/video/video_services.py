@@ -129,3 +129,8 @@ def change_shadowing_status(video_id: int, db: Session) -> None:
         update(Video).where(Video.id == video_id).values(is_shadowing_ready=True)
     )
     db.commit()
+
+def get_youtube_video_id_by_video_id(video_id: int, db: Session) -> str | None:
+    """Get youtube_video_id by video ID."""
+    result = db.scalars(select(Video.youtube_video_id).where(Video.id == video_id)).first()
+    return result
