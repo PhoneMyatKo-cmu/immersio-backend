@@ -265,3 +265,11 @@ def soft_delete_video(video_id: int, db: Session) -> Video | None:
     db.commit()
     db.refresh(video)
     return video
+
+
+def get_youtube_video_id_by_video_id(video_id: int, db: Session) -> str | None:
+    """Get youtube_video_id by video ID."""
+    result = db.scalars(
+        select(Video.youtube_video_id).where(Video.id == video_id)
+    ).first()
+    return result

@@ -1,7 +1,7 @@
 import enum
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum, Float, ForeignKey, Integer, UniqueConstraint
+from sqlalchemy import Boolean, DateTime, Enum, Float, ForeignKey, Integer, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from db.base import Base
@@ -48,6 +48,10 @@ class UserSavedVocabulary(Base):
 
     interval_days: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
+    repetitions: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+    lapses: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
     next_review_date: Mapped[datetime] = mapped_column(DateTime, nullable=True)
 
     last_review_date: Mapped[datetime] = mapped_column(DateTime, nullable=True)
@@ -56,6 +60,9 @@ class UserSavedVocabulary(Base):
         DateTime, default=datetime.utcnow, nullable=False
     )
 
+    is_deleted: Mapped[bool] = mapped_column(
+        Boolean, default=False, nullable=False
+    )
     # Optional relationships (useful for ORM navigation)
     user = relationship("User", backref="saved_vocabularies")
     vocab = relationship("Vocabulary", backref="user_saves")

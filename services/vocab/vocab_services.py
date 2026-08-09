@@ -25,6 +25,7 @@ def save_vocabularies(tokens: list, db: Session):
                 japanese_form=token[0],
                 reading=looked_up_token["romanji_reading"],
                 meanings=looked_up_token["meanings"],
+                lemma=token[2],
                 estimated_level=EstimatedLevel(looked_up_token["jlpt_tier"]),
             )
             db.add(vocab)
@@ -49,6 +50,13 @@ def get_vocab_by_surface_form(surface_form: str, db: Session) -> Vocabulary | No
 
     result = db.scalars(
         select(Vocabulary).where(Vocabulary.japanese_form == surface_form)
+    ).first()
+
+    return result
+
+def get_vocab_by_id(vocab_id: int, db: Session) -> Vocabulary | None:
+    result = db.scalars(
+        select(Vocabulary).where(Vocabulary.id == vocab_id)
     ).first()
 
     return result

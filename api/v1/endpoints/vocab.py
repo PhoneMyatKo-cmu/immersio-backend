@@ -14,9 +14,11 @@ from services.auth.authentication_service import get_current_user
 from services.caption.caption_services import get_caption_translation
 from services.user_vocab.user_vocab_service import (
     check_duplicate_vocab,
+    delete_user_vocab,
+    get_user_saved_vocab,
     save_vocab_to_library,
 )
-from services.vocab.vocab_services import get_vocab_by_surface_form
+from services.vocab.vocab_services import get_vocab_by_id, get_vocab_by_surface_form
 
 router = APIRouter(prefix="/vocab")
 
@@ -95,3 +97,52 @@ def check_duplicate_vocab_per_user(
         )
 
     return {"saved": check_duplicate_vocab(current_user.id, vocab_id, db) is not None}
+
+@router.get("/saved/{user_id}")
+def get_saved_vocab(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: UserRead = Depends(get_current_user),
+):
+    if not current_user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthenticated"
+        )
+
+    saved_vocab = get_user_saved_vocab(user_id, db)
+    vocab_details = [get_vocab_by_id(vocab.vocab_id, db) for vocab in saved_vocab]
+    response = []
+    for vocab, saved in zip(vocab_details, saved_vocab):
+        if vocab:
+            response.append({
+                "vocab_id": vocab.id,
+                "japanese_form": vocab.japanese_form,
+                "reading": vocab.reading,
+                "lemma": vocab.lemma,
+                "meanings": vocab.meanings,
+                "estimated_level": vocab.estimated_level,
+                "srs_state": saved.srs_state,
+                "next_review_date": saved.next_review_date
+            })
+
+    return {"saved_vocab": response}
+
+@router.delete("/delete/{user_id}/{vocab_id}")
+def delete_saved_vocab(
+    user_id: int,
+    vocab_id: int,
+    db: Session = Depends(get_db),
+    current_user: UserRead = Depends(get_current_user),
+):
+    if not current_user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthenticated"
+        )
+
+    deleted = delete_user_vocab(user_id, vocab_id, db)
+    if not deleted:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Vocab not found in user's library"
+        )
+
+    return {"message": "success"}
