@@ -10,7 +10,7 @@ from fastapi.security import OAuth2PasswordBearer
 from pydantic import ValidationError
 from sqlalchemy import select
 from schemas.user import *
-from models.user import User
+from models.user import User, UserRole
 from db.base import get_db
 from sqlalchemy.orm import Session
 import os
@@ -64,6 +64,13 @@ def authenticate_user(db: Session, email: str, password: str) -> UserRead | None
     user = get_user_by_email(email, db)
     if user is None or not verify_password(password, user.password_hash):
         return None
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Account is deactivated",
+        )
+    user.last_login_at = datetime.utcnow()
+    db.commit()
     return user
 
 def create_refresh_token(subject: str) -> str:
@@ -166,7 +173,21 @@ def get_current_user(
     user = get_user_by_email(token_data.sub, db)
     if user is None:
         raise _credentials_error("Could not validate credentials")
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Account is deactivated",
+        )
     return user
+
+def require_admin(current_user: User = Depends(get_current_user)) -> User:
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin privileges required",
+        )
+    return current_user
+
 
 def get_user_from_refresh_token(refresh_token: str, db: Session) -> User:
     token_data = decode_token(
@@ -179,4 +200,9 @@ def get_user_from_refresh_token(refresh_token: str, db: Session) -> User:
     user = get_user_by_email(token_data.sub, db)
     if user is None:
         raise _credentials_error("Could not validate refresh token")
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Account is deactivated",
+        )
     return user

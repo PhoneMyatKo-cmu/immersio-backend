@@ -23,4 +23,6 @@ def add_video(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthenticated"
         )
-    return submit_video_for_processing(data.youtube_url, db, background_tasks)
+    return submit_video_for_processing(
+        data.youtube_url, db, background_tasks, added_by=current_user.id
+    )

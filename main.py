@@ -11,8 +11,10 @@ from api.v1.endpoints import (
     session,
     shadowing,
     spaced_repetition_review,
+    user_admin,
     user_vocab_exposure,
     video,
+    video_admin,
     video_submission,
     vocab,
 )
@@ -69,3 +71,5 @@ app.include_router(session.router)
 app.include_router(learning_progress.router)
 app.include_router(user_vocab_exposure.router)
 app.include_router(spaced_repetition_review.router)
+app.include_router(video_admin.router)
+app.include_router(user_admin.router)
