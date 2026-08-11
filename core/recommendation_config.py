@@ -36,8 +36,8 @@ class RecommendationConfig:
     # ------------------------------------------------------------------ #
     # DECISION: passive exposure is treated as equal to SRS-mastered, so an
     # exposure status of KNOW maps to full 1.0 just like a mastered card.
-    weight_know: float = 1.0        # exposure status == KNOW
-    weight_mastered: float = 1.0    # SRS srs_state == mastered
+    weight_know: float = 1.0  # exposure status == KNOW
+    weight_mastered: float = 1.0  # SRS srs_state == mastered
 
     # Partial credit for words only partially known:
     #   SEEN (exposure): base + step * seen_count, capped below KNOW.
@@ -56,7 +56,7 @@ class RecommendationConfig:
     # Asymmetric band: wider left tail (too-hard falls off gently until it's
     # really incomprehensible), narrower right tail (mild penalty as C -> 1.0
     # so "nothing new to learn" videos are demoted, not banned).
-    comprehension_sigma_left: float = 0.15   # for C < mu (too hard)
+    comprehension_sigma_left: float = 0.15  # for C < mu (too hard)
     comprehension_sigma_right: float = 0.05  # for C > mu (too easy)
 
     # ------------------------------------------------------------------ #
@@ -67,9 +67,9 @@ class RecommendationConfig:
     # JLPT tiers are ranked N5=5 (easiest) .. N1=1 (hardest); a word "above"
     # the user's level is harder (lower tier number).
     level_fit_same: float = 1.0
-    level_fit_step_harder: float = 0.5   # multiplier per tier ABOVE user level
-    level_fit_step_easier: float = 0.8   # multiplier per tier BELOW user level
-    level_fit_unknown: float = 0.05      # Vocabulary.estimated_level == UNKNOWN
+    level_fit_step_harder: float = 0.5  # multiplier per tier ABOVE user level
+    level_fit_step_easier: float = 0.8  # multiplier per tier BELOW user level
+    level_fit_unknown: float = 0.05  # Vocabulary.estimated_level == UNKNOWN
 
     # A word must appear at least this many times in a video to count as a
     # realistic learning target (incidental-acquisition research: ~8-12+
@@ -89,6 +89,11 @@ class RecommendationConfig:
     # Cap distinct deck words counted per video so one word-stuffed video
     # can't dominate the SRS term.
     srs_max_words_per_video: int = 5
+
+    # Normalization: squash the raw bonus into [0, 1] so weights stay pure
+    # business priority. Higher = slower saturation (raw bonus must be larger
+    # to approach 1). ~3.0 means a couple of due words already scores well.
+    srs_saturation: float = 3.0
 
     # ------------------------------------------------------------------ #
     # RecencyPenalty (§6)
