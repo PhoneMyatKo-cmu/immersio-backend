@@ -2,7 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from db.base import get_db
+from schemas.recommendation import RecommendationResponse, RecommendedVideo
 from schemas.video import VideoResponse
+from services.auth.authentication_service import get_current_user
+from services.recommendation.recommendation_service import get_recommended_videos
 from services.video.video_services import (
     get_video_by_id,
     get_videos,
@@ -53,3 +56,11 @@ def shadowing_status(video_id: int, db: Session = Depends(get_db)):
     if not video:
         raise HTTPException(404, "Video not found")
     return {"is_shadowing_ready": video.is_shadowing_ready}
+
+
+@router.get("/recommendation", response_model=RecommendationResponse)
+def recommend_videos(
+    db: Session = Depends(get_db), current_user=Depends(get_current_user)
+):
+
+    return get_recommended_videos(current_user, db)
