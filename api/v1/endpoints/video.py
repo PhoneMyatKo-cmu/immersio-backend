@@ -41,6 +41,17 @@ def get_home_feed(
 #     return videos, total_pages
 
 
+@router.get("/recommendation", response_model=RecommendationResponse)
+def recommend_videos(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+    page: int = 1,
+    page_size: int = 6,
+):
+
+    return get_recommended_videos(current_user, db, page, page_size)
+
+
 @router.get("/{id}")
 def get_video(id: int, db: Session = Depends(get_db)) -> VideoResponse:
 
@@ -56,11 +67,3 @@ def shadowing_status(video_id: int, db: Session = Depends(get_db)):
     if not video:
         raise HTTPException(404, "Video not found")
     return {"is_shadowing_ready": video.is_shadowing_ready}
-
-
-@router.get("/recommendation", response_model=RecommendationResponse)
-def recommend_videos(
-    db: Session = Depends(get_db), current_user=Depends(get_current_user)
-):
-
-    return get_recommended_videos(current_user, db)

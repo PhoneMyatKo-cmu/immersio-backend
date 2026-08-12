@@ -273,3 +273,9 @@ def get_youtube_video_id_by_video_id(video_id: int, db: Session) -> str | None:
         select(Video.youtube_video_id).where(Video.id == video_id)
     ).first()
     return result
+
+
+def get_video_eligible_for_recommendation(db: Session):
+    return list(
+        db.scalars(select(Video).where(Video.is_active, Video.is_shadowing_ready)).all()
+    )

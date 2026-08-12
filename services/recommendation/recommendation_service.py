@@ -9,13 +9,25 @@ from models.user_vocab_library import UserSavedVocabulary
 from models.video_vocab_profile import VideoVocabulary
 from models.vocab import EstimatedLevel as VocabLevel
 from models.vocab import Vocabulary
-from schemas.recommendation import RecommendationResponse, RecommendedVideo
+from schemas.recommendation import (
+    RecommendationReasons,
+    RecommendationResponse,
+    RecommendedVideo,
+)
 from schemas.user import UserRead
-from services.user_vocab.user_vocab_service import get_user_saved_vocab
+from schemas.video import VideoResponse
+from services.session.session_service import last_watched_map
+from services.user_vocab.user_vocab_service import (
+    get_studying_vocab_by_user,
+    get_user_saved_vocab,
+)
 from services.user_vocab_exposure.user_vocab_exposure_service import (
     get_vocab_exposure_by_user,
 )
-from services.video.video_services import get_videos
+from services.video.video_services import (
+    get_video_eligible_for_recommendation,
+    get_videos,
+)
 from utils.recommendation_helpers import (
     comprehension_fit,
     compute_known_weight,
@@ -28,11 +40,49 @@ from utils.recommendation_helpers import (
 
 
 def get_recommended_videos(
-    current_user: UserRead, db: Session
+    current_user: UserRead, db: Session, page: int = 1, page_size: int = 6
 ) -> RecommendationResponse:
     vocab_weights = get_vocab_weights(current_user.id, db)
+    candidate_videos = get_video_eligible_for_recommendation(db)
+    studying_vocabs = get_studying_vocab_by_user(current_user.id, db)
+    last_watch_video_map = last_watched_map(current_user.id, db)
 
-    return RecommendationResponse()
+    score = []
+    for video in candidate_videos:
+        result = score_video(
+            video_id=video.id,
+            known_map=vocab_weights,
+            studying_rows=studying_vocabs,
+            last_watched=last_watch_video_map.get(video.id),
+            user_level=current_user.estimated_level,
+            now=datetime.utcnow(),
+            db=db,
+            cfg=CONFIG,
+        )
+        score.append((video, result))
+
+    score.sort(key=lambda pair: pair[1]["score"], reverse=True)
+
+    total = len(score)
+    total_pages = (total + page_size - 1) // page_size
+    start = (page - 1) * page_size
+    page_slice = score[start : start + page_size]
+
+    items = [
+        RecommendedVideo(
+            id=video.id,
+            video=VideoResponse.model_validate(video),
+            score=result["score"],
+            reasons=RecommendationReasons(
+                **{k: v for k, v in result.items() if k != "score"}
+            ),
+        )
+        for video, result in page_slice
+    ]
+
+    return RecommendationResponse(
+        items=items, page=page, page_size=page_size, total_pages=total_pages
+    )
 
 
 def get_vocab_weights(user_id: int, db: Session):
@@ -49,7 +99,7 @@ def get_vocab_weights(user_id: int, db: Session):
             library_by_vocab.get(vocab_id),
         )
         if weight > 0.0:
-            known_map[vocab_id] = weight
+            known_map[int(vocab_id)] = weight
 
     return known_map
 
