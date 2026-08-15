@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -10,8 +10,10 @@ from models.video_vocab_profile import VideoVocabulary
 from models.vocab import EstimatedLevel as VocabLevel
 from models.vocab import Vocabulary
 from schemas.recommendation import (
+    RecommendationFeed,
     RecommendationReasons,
     RecommendationResponse,
+    RecommendationSection,
     RecommendedVideo,
 )
 from schemas.user import UserRead
@@ -32,6 +34,8 @@ from utils.recommendation_helpers import (
     comprehension_fit,
     compute_known_weight,
     coverage,
+    difficulty_tag,
+    due_factor,
     learning_value,
     normalize_srs,
     recency_penalty,
@@ -39,16 +43,40 @@ from utils.recommendation_helpers import (
 )
 
 
+def _to_item(video, result, cfg) -> RecommendedVideo:
+    cov = result["coverage"]
+    return RecommendedVideo(
+        id=video.id,
+        video=VideoResponse.model_validate(video),
+        score=result["score"],
+        understand_percent=round(cov * 100),
+        difficulty=difficulty_tag(cov, cfg),
+        new_word_count=result["new_word_count"],
+        review_word_count=result["review_word_count"],
+        reasons=None,  # populate only in a debug mode
+    )
+
+
 def get_recommended_videos(
     current_user: UserRead, db: Session, page: int = 1, page_size: int = 6
-) -> RecommendationResponse:
+) -> RecommendationFeed:
     vocab_weights = get_vocab_weights(current_user.id, db)
     candidate_videos = get_video_eligible_for_recommendation(db)
     studying_vocabs = get_studying_vocab_by_user(current_user.id, db)
     last_watch_video_map = last_watched_map(current_user.id, db)
 
+    recency_cutoff = datetime.utcnow() - timedelta(
+        hours=CONFIG.recency_hard_filter_hours
+    )
     score = []
     for video in candidate_videos:
+        last = last_watch_video_map.get(video.id)
+        if (
+            CONFIG.recency_hard_filter_hours > 0
+            and last is not None
+            and last >= recency_cutoff
+        ):
+            continue
         result = score_video(
             video_id=video.id,
             known_map=vocab_weights,
@@ -63,26 +91,69 @@ def get_recommended_videos(
 
     score.sort(key=lambda pair: pair[1]["score"], reverse=True)
 
-    total = len(score)
-    total_pages = (total + page_size - 1) // page_size
-    start = (page - 1) * page_size
-    page_slice = score[start : start + page_size]
+    # enrich into items, in rank order
+    ranked = [_to_item(video, result, CONFIG) for video, result in score]
 
-    items = [
-        RecommendedVideo(
-            id=video.id,
-            video=VideoResponse.model_validate(video),
-            score=result["score"],
-            reasons=RecommendationReasons(
-                **{k: v for k, v in result.items() if k != "score"}
-            ),
-        )
-        for video, result in page_slice
-    ]
+    # hero row: top N by score,
+    hero = [it for it in ranked if it.difficulty][: CONFIG.hero_size]
 
-    return RecommendationResponse(
-        items=items, page=page, page_size=page_size, total_pages=total_pages
+    # difficulty buckets (score order preserved from `ranked`)
+    def bucket(tag: str) -> list[RecommendedVideo]:
+        return [it for it in ranked if it.difficulty == tag]
+
+    best_fit, stretch, comfortable = (
+        bucket("best_fit"),
+        bucket("stretch"),
+        bucket("comfortable"),
     )
+
+    sections = [
+        RecommendationSection(
+            key="top_picks", title="Top picks for you", total=len(hero), items=hero
+        ),
+        RecommendationSection(
+            key="best_fit",
+            title="Just Right",
+            total=len(best_fit),
+            items=best_fit[: CONFIG.row_size],
+        ),
+        RecommendationSection(
+            key="stretch",
+            title="Challenge",
+            total=len(stretch),
+            items=stretch[: CONFIG.row_size],
+        ),
+        RecommendationSection(
+            key="comfortable",
+            title="Easy For You",
+            total=len(comfortable),
+            items=comfortable[: CONFIG.row_size],
+        ),
+    ]
+    sections = [s for s in sections if s.items]  # drop empty rows
+
+    return RecommendationFeed(sections=sections)
+
+    # total = len(score)
+    # total_pages = (total + page_size - 1) // page_size
+    # start = (page - 1) * page_size
+    # page_slice = score[start : start + page_size]
+
+    # items = [
+    #     RecommendedVideo(
+    #         id=video.id,
+    #         video=VideoResponse.model_validate(video),
+    #         score=result["score"],
+    #         reasons=RecommendationReasons(
+    #             **{k: v for k, v in result.items() if k != "score"}
+    #         ),
+    #     )
+    #     for video, result in page_slice
+    # ]
+
+    # return RecommendationResponse(
+    #     items=items, page=page, page_size=page_size, total_pages=total_pages
+    # )
 
 
 def get_vocab_weights(user_id: int, db: Session):
@@ -159,6 +230,18 @@ def score_video(
         cfg.w_ci * ci + cfg.w_learn * learn + cfg.w_srs * srs - cfg.w_recency * recency
     )
 
+    new_word_count = sum(
+        1
+        for vid, freq in video_vocab_freqs.items()
+        if freq >= cfg.learnable_min_freq and known_map.get(vid, 0.0) < 1.0
+    )
+    review_word_count = sum(
+        1
+        for row in studying_rows
+        if row.vocab_id in video_vocab_ids
+        and due_factor(row.next_review_date, now, cfg) > 0.0
+    )
+
     return {
         "score": score,
         "coverage": c,
@@ -166,4 +249,6 @@ def score_video(
         "learning_value": learn,
         "srs_bonus": srs,
         "recency_penalty": recency,
+        "new_word_count": new_word_count,
+        "review_word_count": review_word_count,
     }

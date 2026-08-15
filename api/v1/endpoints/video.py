@@ -2,7 +2,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from db.base import get_db
-from schemas.recommendation import RecommendationResponse, RecommendedVideo
+from schemas.recommendation import (
+    RecommendationFeed,
+    RecommendationResponse,
+    RecommendedVideo,
+)
 from schemas.video import VideoResponse
 from services.auth.authentication_service import get_current_user
 from services.recommendation.recommendation_service import get_recommended_videos
@@ -41,7 +45,7 @@ def get_home_feed(
 #     return videos, total_pages
 
 
-@router.get("/recommendation", response_model=RecommendationResponse)
+@router.get("/recommendation", response_model=RecommendationFeed)
 def recommend_videos(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),

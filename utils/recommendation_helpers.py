@@ -252,3 +252,14 @@ def recency_penalty(
 
     days = max(0.0, (now - last_watched).total_seconds() / 86400.0)
     return math.exp(-days / cfg.recency_tau_days)
+
+
+def difficulty_tag(c: float, cfg: RecommendationConfig = CONFIG) -> str:
+    """Map coverage to a learner-facing difficulty bucket (display only)."""
+    if c >= cfg.difficulty_comfortable_min:
+        return "comfortable"
+    if c >= cfg.difficulty_best_fit_min:
+        return "best_fit"
+    if c >= cfg.difficulty_stretch_min:
+        return "stretch"
+    return "too_advanced"

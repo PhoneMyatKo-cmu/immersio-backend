@@ -120,6 +120,23 @@ class RecommendationConfig:
     # and blend into the personalized score as the profile grows.
     cold_start_min_profile: int = 50
 
+    # ------------------------------------------------------------------ #
+    # Feed layout & difficulty tags (display only — not used in scoring)
+    # ------------------------------------------------------------------ #
+    hero_size: int = 8  # videos in the "Top picks" row
+    row_size: int = 12  # videos per difficulty row
+
+    # Difficulty tag thresholds, on coverage. Backend owns these so the
+    # label rule lives in one place.
+    difficulty_comfortable_min: float = 0.95  # >= this -> comfortable
+    difficulty_best_fit_min: float = 0.85  # >= this -> best_fit
+    difficulty_stretch_min: float = 0.70  # >= this -> stretch; below -> too_advanced
+
+    # Recency hard cutoff: videos watched within this window are excluded
+    # outright (the additive penalty can't reliably suppress a high-CI video).
+    # Set 0 to disable. The soft recency_penalty still handles the tail after.
+    recency_hard_filter_hours: float = 0.0
+
 
 # Singleton used across the recommendation service. Import this, don't
 # re-instantiate, so all layers read the same tuned values.
