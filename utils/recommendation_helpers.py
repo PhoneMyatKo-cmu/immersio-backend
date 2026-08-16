@@ -263,3 +263,22 @@ def difficulty_tag(c: float, cfg: RecommendationConfig = CONFIG) -> str:
     if c >= cfg.difficulty_stretch_min:
         return "stretch"
     return "too_advanced"
+
+
+def cold_start_may_know_percent(
+    video_vocabs_freq, word_levels, user_estimated_level: UserLevel, cfg
+):
+    total = sum(video_vocabs_freq.values())
+    band = _USER_LEVEL_BANDS.get(user_estimated_level)
+
+    if total == 0 or band is None:
+        return 0
+
+    low, _ = band
+    at_or_below = sum(
+        freq
+        for vid, freq in video_vocabs_freq.items()
+        if (r := _JLPT_RANK.get(word_levels.get(vid, VocabLevel.UNKNOWN))) is not None
+        and r >= low  # rank >= low  ==  tier at or below the user's level
+    )
+    return round(100 * at_or_below / total)

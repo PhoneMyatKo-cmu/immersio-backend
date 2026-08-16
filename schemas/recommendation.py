@@ -23,6 +23,7 @@ class RecommendedVideo(BaseModel):
     id: int
     video: VideoResponse
     score: float
+    may_know_percent: int | None = None
     understand_percent: int
     difficulty: str
     new_word_count: int  # number of appropriate new words to learn
@@ -41,6 +42,7 @@ class RecommendationSection(BaseModel):
 
 class RecommendationFeed(BaseModel):
     # user_level: EstimatedLevel
+    is_cold_start: bool
     sections: list[RecommendationSection]
 
 

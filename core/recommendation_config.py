@@ -137,6 +137,9 @@ class RecommendationConfig:
     # Set 0 to disable. The soft recency_penalty still handles the tail after.
     recency_hard_filter_hours: float = 0.0
 
+    # Cutoff min profile to dcide cold start or not
+    cold_start_min_profile = 50
+
 
 # Singleton used across the recommendation service. Import this, don't
 # re-instantiate, so all layers read the same tuned values.

@@ -31,6 +31,7 @@ from services.video.video_services import (
     get_videos,
 )
 from utils.recommendation_helpers import (
+    cold_start_may_know_percent,
     comprehension_fit,
     compute_known_weight,
     coverage,
@@ -50,6 +51,7 @@ def _to_item(video, result, cfg) -> RecommendedVideo:
         video=VideoResponse.model_validate(video),
         score=result["score"],
         understand_percent=round(cov * 100),
+        may_know_percent=result["may_know_percent"],
         difficulty=difficulty_tag(cov, cfg),
         new_word_count=result["new_word_count"],
         review_word_count=result["review_word_count"],
@@ -94,6 +96,20 @@ def get_recommended_videos(
     # enrich into items, in rank order
     ranked = [_to_item(video, result, CONFIG) for video, result in score]
 
+    is_cold_start = len(vocab_weights) < CONFIG.cold_start_min_profile
+    if is_cold_start:
+        return RecommendationFeed(
+            is_cold_start=is_cold_start,
+            sections=[
+                RecommendationSection(
+                    key="recommended_picks",
+                    title="Top picks for you",
+                    total=len(ranked),
+                    items=ranked[: CONFIG.row_size],
+                )
+            ],
+        )
+
     # hero row: top N by score,
     hero = [it for it in ranked if it.difficulty][: CONFIG.hero_size]
 
@@ -132,7 +148,7 @@ def get_recommended_videos(
     ]
     sections = [s for s in sections if s.items]  # drop empty rows
 
-    return RecommendationFeed(sections=sections)
+    return RecommendationFeed(is_cold_start=is_cold_start, sections=sections)
 
     # total = len(score)
     # total_pages = (total + page_size - 1) // page_size
@@ -225,6 +241,9 @@ def score_video(
     srs_raw = srs_review_bonus(studying_rows, video_vocab_ids, now, cfg)
     srs = normalize_srs(srs_raw, cfg)
     recency = recency_penalty(last_watched, now, cfg)
+    may_know_pecent = cold_start_may_know_percent(
+        video_vocab_freqs, word_levels, user_level, CONFIG
+    )
 
     score = (
         cfg.w_ci * ci + cfg.w_learn * learn + cfg.w_srs * srs - cfg.w_recency * recency
@@ -251,4 +270,5 @@ def score_video(
         "recency_penalty": recency,
         "new_word_count": new_word_count,
         "review_word_count": review_word_count,
+        "may_know_percent": may_know_pecent,
     }
