@@ -135,7 +135,7 @@ class RecommendationConfig:
     # Recency hard cutoff: videos watched within this window are excluded
     # outright (the additive penalty can't reliably suppress a high-CI video).
     # Set 0 to disable. The soft recency_penalty still handles the tail after.
-    recency_hard_filter_hours: float = 0.0
+    recency_hard_filter_hours: float = 24
 
     # Cutoff min profile to dcide cold start or not
     cold_start_min_profile = 50

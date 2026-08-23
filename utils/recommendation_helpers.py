@@ -266,7 +266,10 @@ def difficulty_tag(c: float, cfg: RecommendationConfig = CONFIG) -> str:
 
 
 def cold_start_may_know_percent(
-    video_vocabs_freq, word_levels, user_estimated_level: UserLevel, cfg
+    video_vocabs_freq,
+    word_levels,
+    user_estimated_level: UserLevel,
+    cfg: RecommendationConfig = CONFIG,
 ):
     total = sum(video_vocabs_freq.values())
     band = _USER_LEVEL_BANDS.get(user_estimated_level)
