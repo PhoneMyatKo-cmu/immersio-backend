@@ -146,7 +146,10 @@ def get_recommended_videos(
             items=comfortable[: CONFIG.row_size],
         ),
     ]
-    sections = [s for s in sections if s.items]  # drop empty rows
+    # sections = [
+    #     s for s in sections if s.items and s.key != "top_picks"
+    # ]  # drop empty rows
+    print(sections)
 
     return RecommendationFeed(is_cold_start=is_cold_start, sections=sections)
 
