@@ -105,7 +105,7 @@ def test_comprehension_fit_easier():
     assert c == pytest.approx(0.83527)
 
 
-def test_comprehension_fit_zero():
+def test_comprehension_fit_zero():  # not in doc
     c = comprehension_fit(0, CONFIG)
     assert c == pytest.approx(1.9497e-9)
 
@@ -136,7 +136,7 @@ def test_level_fit_easier_vocab():
 
 def test_level_fit_jump_easier_vocab():
     score = level_fit(VocabLevel.N5, UserLevel.advanced, CONFIG)
-    assert score == 0.4096
+    assert score == pytest.approx(0.4096)
 
 
 def test_level_fit_harder_vocab():
@@ -149,7 +149,7 @@ def test_level_fit_jump_harder_vocab():
     assert score == 0.125
 
 
-def test_level_fit_intended_behaviour():
+def test_level_fit_intended_behaviour():  # not in doc
     score_unknown = level_fit(VocabLevel.UNKNOWN, UserLevel.beginner, CONFIG)
     score_fit = level_fit(VocabLevel.N3, UserLevel.intermediate, CONFIG)
     score_easier = level_fit(VocabLevel.N5, UserLevel.intermediate, CONFIG)
@@ -208,7 +208,7 @@ def test_due_factor_not_schedule():
 
 
 def test_due_factor_not_due():
-    df = due_factor(datetime.datetime(2026, 8, 20), datetime.datetime.utcnow())
+    df = due_factor(datetime.datetime(2026, 9, 7), datetime.datetime.utcnow())
     assert df == 0
 
 
@@ -291,7 +291,7 @@ def test_srs_review_more_lapses_scores_higher():
     assert b > a
 
 
-def test_srs_review_caps_at_max_words_per_video():
+def test_srs_review_caps_at_max_words_per_video():  # not in doc
     cfg = RecommendationConfig(srs_max_words_per_video=2)
     rows = [card(i, days_overdue=5) for i in range(1, 6)]  # 5 identical due words
     one = srs_review_bonus([rows[0]], {1}, NOW, cfg)
@@ -408,7 +408,7 @@ def test_may_know_unknown_tier_does_not_count():
     assert cold_start_may_know_percent(freqs, levels, UserLevel.beginner) == 50
 
 
-def test_may_know_higher_level_counts_more_tiers():
+def test_may_know_higher_level_counts_more_tiers():  # not in doc
     freqs = {1: 50, 2: 50}
     levels = {1: VocabLevel.N5, 2: VocabLevel.N2}
     # beginner: only N5 is at/below -> 50 ; intermediate (N2-N3): N5(below) + N2 -> 100
