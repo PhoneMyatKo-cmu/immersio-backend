@@ -25,6 +25,7 @@ try:
         save_tokenized_captions,
         get_captions_by_video_id,
         get_caption_translation,
+        get_caption_by_id,
     )
 except Exception as exc:
     pytest.skip(f"caption_services unavailable: {exc}", allow_module_level=True)
@@ -147,3 +148,55 @@ def test_caption_translation_unavailable_returns_fallback(monkeypatch, db_sessio
 def test_caption_translation_malformed_dict_raises_keyerror(db_session):
     with pytest.raises(KeyError):
         get_caption_translation({"surface": "食べる"}, db_session)  # missing id/text
+
+
+# ==========================================================================
+# docs/test_case_specification.pdf  MD-128  get_caption_by_id()
+#   - Caption found by id
+#   - Unknown caption id
+# Self-contained in-memory SQLite session (`caption_db`).
+# ==========================================================================
+from sqlalchemy import create_engine  # noqa: E402
+from sqlalchemy.orm import sessionmaker  # noqa: E402
+from sqlalchemy.pool import StaticPool  # noqa: E402
+
+import models.sentence  # noqa: E402,F401  (Video.shadowingsentences relationship target)
+
+
+@pytest.fixture()
+def caption_db():
+    engine = create_engine("sqlite://", connect_args={"check_same_thread": False},
+                           poolclass=StaticPool)
+    for table in (Video.__table__, Caption.__table__):
+        table.create(engine)
+    Session = sessionmaker(bind=engine, autoflush=False, autocommit=False,
+                           expire_on_commit=False)
+    session = Session()
+    try:
+        yield session
+    finally:
+        session.close()
+        engine.dispose()
+
+
+@pytest.mark.word_lookup
+def test_get_caption_by_id_returns_row(caption_db):
+    """The Caption row is returned with its text and timing fields."""
+    video = _make_video(caption_db)
+    caption = Caption(video_id=video.id, caption_index=0, text="毎日ご飯を食べる。",
+                      tokens=[], start_time=1.0, end_time=3.0, duration=2.0,
+                      translation="I eat rice every day.")
+    caption_db.add(caption)
+    caption_db.commit()
+
+    found = get_caption_by_id(caption.id, caption_db)
+    assert found is not None
+    assert found.text == "毎日ご飯を食べる。"
+    assert found.translation == "I eat rice every day."
+    assert (found.start_time, found.end_time) == (1.0, 3.0)
+
+
+@pytest.mark.word_lookup
+def test_get_caption_by_id_unknown_returns_none(caption_db):
+    """An unknown caption id yields None."""
+    assert get_caption_by_id(999, caption_db) is None

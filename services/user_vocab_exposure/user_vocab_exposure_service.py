@@ -140,13 +140,22 @@ def get_vocab_known_by_user(user_id: int, db: Session):
         .all()
     )
 
-
-def get_vocab_exposure_by_user(user_id: int, db: Session):
+def get_vocab_seen_count_by_user(user_id: int, db: Session):
     """
-    Retrieve all exposed vocabulary by a specific user.
+    Retrieve the count of vocabulary seen by a specific user.
     """
     return (
         db.query(UserVocabularyExposure)
         .filter(UserVocabularyExposure.user_id == user_id)
-        .all()
+        .count()
+    )
+
+def get_vocab_known_count_by_user(user_id: int, db: Session):
+    """
+    Retrieve the count of vocabulary known by a specific user.
+    """
+    return (
+        db.query(UserVocabularyExposure)
+        .filter(UserVocabularyExposure.user_id == user_id, UserVocabularyExposure.status == "KNOW")
+        .count()
     )
