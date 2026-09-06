@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
-from pytest import Session
+from sqlalchemy.orm import Session
 
 from db.base import Base, get_db
 from services.auth.authentication_service import get_current_user

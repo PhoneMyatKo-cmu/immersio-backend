@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from models.daily_progress import DailyProgress
 from models.learning_session import LearningSession
 from services.session.session_service import get_learning_sessions_by_user, get_learning_sessions_by_user_and_day
-from services.user_vocab_exposure.user_vocab_exposure_service import get_user_vocab_exposure, get_vocab_known_by_user, get_vocab_seen_by_user
+from services.user_vocab_exposure.user_vocab_exposure_service import get_user_vocab_exposure, get_vocab_known_by_user, get_vocab_known_count_by_user, get_vocab_seen_by_user, get_vocab_seen_count_by_user
 
 
 def create_daily_progress(user_id: int, day: date):
@@ -84,7 +84,7 @@ def calculate_new_vocab_known(sessions: list[LearningSession], db: Session):
     Calculates the total number of vocabulary words known from the provided LearningSession.
     """
     total_vocab_known_all_time = get_vocab_known_by_user(sessions[0].user_id, db)
-    total_vocab_seen_count_all_time = {vocab.vocab_id: vocab.known_count for vocab in total_vocab_known_all_time}
+    total_vocab_seen_count_all_time = {vocab.vocab_id: vocab.seen_count for vocab in total_vocab_known_all_time}
     vocab_seen_count_today = {}
     for session in sessions:
         for vocab in session.session_vocabularies:
@@ -130,9 +130,9 @@ def summarize_daily_progresses(daily_progresses: list[DailyProgress], types: lis
     if "total_videos_watched" in types:
         results["total_videos_watched"] = daily_progresses[-1].total_videos_watched if daily_progresses else 0
     if "vocab_seen" in types:
-        results["vocab_seen"] = sum(progress.new_vocab_seen for progress in daily_progresses)
+        results["vocab_seen"] = get_vocab_seen_count_by_user(daily_progresses[0].user_id, db) if daily_progresses else 0
     if "vocab_known" in types:
-        results["vocab_known"] = sum(progress.new_vocab_known for progress in daily_progresses)
+        results["vocab_known"] = get_vocab_known_count_by_user(daily_progresses[0].user_id, db) if daily_progresses else 0
     if "streak" in types:
         today_progress = next((progress for progress in daily_progresses if progress.day == date.today()), None)
         yesterday_progress = next((progress for progress in daily_progresses if progress.day == date.today() - timedelta(days=1)), None)

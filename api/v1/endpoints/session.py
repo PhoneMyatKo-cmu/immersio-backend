@@ -1,5 +1,5 @@
 
-from curl_cffi import Session
+from sqlalchemy.orm import Session
 from fastapi import APIRouter, Depends
 
 from db.base import get_db
