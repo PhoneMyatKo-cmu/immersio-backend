@@ -19,6 +19,7 @@ try:
     from models.vocab import EstimatedLevel, Vocabulary
     from services.vocab import vocab_services as svc
     from services.vocab.vocab_services import (
+        get_vocab_by_id,
         get_vocab_by_surface_form,
         save_vocabularies,
     )
@@ -115,3 +116,52 @@ def test_get_vocab_by_surface_form_returns_none_if_not_found(db_session):
     # assert found is not None
     # assert found.reading == "taberu"
     assert get_vocab_by_surface_form("走る", db_session) is None
+
+
+# ==========================================================================
+# docs/test_case_specification.pdf  MD-126  get_vocab_by_id()
+#   - Vocabulary found by id
+#   - Unknown vocabulary id
+# Self-contained in-memory SQLite session (`vocab_db`).
+# ==========================================================================
+from sqlalchemy import create_engine  # noqa: E402
+from sqlalchemy.orm import sessionmaker  # noqa: E402
+from sqlalchemy.pool import StaticPool  # noqa: E402
+
+
+@pytest.fixture()
+def vocab_db():
+    engine = create_engine("sqlite://", connect_args={"check_same_thread": False},
+                           poolclass=StaticPool)
+    Vocabulary.__table__.create(engine)
+    Session = sessionmaker(bind=engine, autoflush=False, autocommit=False,
+                           expire_on_commit=False)
+    session = Session()
+    try:
+        yield session
+    finally:
+        session.close()
+        engine.dispose()
+
+
+@pytest.mark.word_lookup
+def test_get_vocab_by_id_returns_row(vocab_db):
+    """The Vocabulary row is returned with its fields populated."""
+    row = Vocabulary(japanese_form="食べる", reading="taberu", lemma="食べる",
+                     meanings=[{"pos": "verb", "meanings": ["to eat"]}],
+                     estimated_level=EstimatedLevel.N5)
+    vocab_db.add(row)
+    vocab_db.commit()
+
+    found = get_vocab_by_id(row.id, vocab_db)
+    assert found is not None
+    assert found.japanese_form == "食べる"
+    assert found.reading == "taberu"
+    assert found.lemma == "食べる"
+    assert found.meanings == [{"pos": "verb", "meanings": ["to eat"]}]
+
+
+@pytest.mark.word_lookup
+def test_get_vocab_by_id_unknown_returns_none(vocab_db):
+    """An unknown id yields None."""
+    assert get_vocab_by_id(999, vocab_db) is None

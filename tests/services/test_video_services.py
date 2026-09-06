@@ -31,6 +31,7 @@ try:
         get_video_by_id,
         get_video_by_youtube_video_id,
         get_videos,
+        get_youtube_video_id_by_video_id,
         save_video,
     )
 except Exception as exc:  # isodate / import-chain deps missing
@@ -170,6 +171,28 @@ def test_get_total_video_count_counts_rows_from_statement(service_db):
     stmt = select(Video).where(Video.title.ilike("%Japanese%"))
 
     assert get_total_video_count(service_db, stmt) == 2
+
+
+# ---------------------------------------------------------------------------
+# MD-125  get_youtube_video_id_by_video_id()
+#   docs/test_case_specification.pdf
+#     - YouTube id resolved for an existing video
+#     - Unknown video id
+# ---------------------------------------------------------------------------
+def test_youtube_id_resolved_for_existing_video(service_db):
+    """The youtube_video_id string is returned for a known video row."""
+    from datetime import datetime
+
+    video = _video("dQw4w9WgXcQ", "Nihongo Lesson", datetime(2026, 1, 1))
+    service_db.add(video)
+    service_db.commit()
+
+    assert get_youtube_video_id_by_video_id(video.id, service_db) == "dQw4w9WgXcQ"
+
+
+def test_youtube_id_unknown_video_returns_none(service_db):
+    """An unknown video id yields None."""
+    assert get_youtube_video_id_by_video_id(999, service_db) is None
 
 
 # --- DBS-01 -----------------------------------------------------------------
