@@ -1,9 +1,16 @@
+import enum
 from datetime import datetime
+from typing import Optional
 
-from sqlalchemy import Boolean, DateTime, Integer, String
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from db.base import Base
+
+
+class VideoSource(str, enum.Enum):
+    curated = "curated"
+    user_submitted = "user_submitted"
 
 
 class Video(Base):
@@ -28,6 +35,22 @@ class Video(Base):
     is_shadowing_ready: Mapped[bool] = mapped_column(
         Boolean, default=False, nullable=False
     )
+
+    source: Mapped[VideoSource] = mapped_column(
+        Enum(VideoSource, name="video_source_enum"),
+        nullable=False,
+        default=VideoSource.user_submitted,
+    )
+
+    is_active: Mapped[bool] = mapped_column(
+        Boolean, default=True, nullable=False
+    )
+
+    added_by: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("users.id"), nullable=True
+    )
+
+    added_by_user = relationship("User", back_populates="added_videos")
 
     captions = relationship(
         "Caption", back_populates="video", cascade="all, delete-orphan"

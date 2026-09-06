@@ -33,6 +33,7 @@ htmlcov/
 Thumbs.db
 
 # custom
+CLAUDE.md
 services/romaji_test.py
 utils/data/*
 utils/test*.py
@@ -51,3 +52,6 @@ docs/sdd_method_descriptions.md
 docs/sdd_method_reference.md
 docs/test_plan.docx
 docs/test_plan.md
+docs/Immersio_Traceability_Limitations_NextSteps.pptx
+docs/Progress1_Presentation_Script.md
+docs/Traceability_Shadowing_Auth.docx
