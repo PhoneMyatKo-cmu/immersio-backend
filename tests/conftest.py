@@ -15,6 +15,21 @@ FX- ids there.
 import os
 import pytest
 
+# ---------------------------------------------------------------------------
+# Let the PostgreSQL JSONB columns (Caption.tokens, Vocabulary.meanings, ...)
+# compile on SQLite so self-contained in-memory test sessions can create those
+# tables. SQLite renders it as JSON/TEXT; SQLAlchemy still (de)serializes.
+# ---------------------------------------------------------------------------
+try:  # pragma: no cover - registration side effect
+    from sqlalchemy.dialects.postgresql import JSONB
+    from sqlalchemy.ext.compiler import compiles
+
+    @compiles(JSONB, "sqlite")
+    def _compile_jsonb_sqlite(element, compiler, **kw):  # noqa: ANN001
+        return "JSON"
+except Exception:  # SQLAlchemy always present in practice
+    pass
+
 TEST_DATABASE_URL = os.getenv(
     "TEST_DATABASE_URL",
     "postgresql+psycopg://postgres:postgres@localhost:5432/immersio_test",
