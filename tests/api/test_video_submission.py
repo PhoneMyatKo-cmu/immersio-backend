@@ -18,7 +18,9 @@ try:
     from services.auth.authentication_service import get_current_user
     from services.video.video_submission_service import SubmissionResult
 except Exception as exc:
-    pytest.skip(f"video_submission endpoint unavailable: {exc}", allow_module_level=True)
+    pytest.skip(
+        f"video_submission endpoint unavailable: {exc}", allow_module_level=True
+    )
 
 pytestmark = [pytest.mark.system, pytest.mark.video_submission]
 
@@ -43,21 +45,30 @@ def _client(current_user=_StubUser()):
 def test_add_video_success(monkeypatch):
     calls = {}
 
-    def fake_submit(url, db, background_tasks):
+    def fake_submit(url, db, background_tasks, added_by):
         calls["url"] = url
-        return SubmissionResult(message="Successful", video_id=1, video_title="日本語レッスン")
+        return SubmissionResult(
+            message="Successful", video_id=1, video_title="日本語レッスン"
+        )
 
     monkeypatch.setattr(ep, "submit_video_for_processing", fake_submit)
-    r = _client().post("/submit-video/", json={"youtube_url": "https://youtu.be/dQw4w9WgXcQ"})
+    r = _client().post(
+        "/submit-video/", json={"youtube_url": "https://youtu.be/dQw4w9WgXcQ"}
+    )
     assert r.status_code == 200
-    assert r.json() == {"message": "Successful", "video_id": 1, "video_title": "日本語レッスン"}
+    assert r.json() == {
+        "message": "Successful",
+        "video_id": 1,
+        "video_title": "日本語レッスン",
+    }
     assert calls["url"] == "https://youtu.be/dQw4w9WgXcQ"
 
 
 def test_add_video_unauthenticated_returns_401(monkeypatch):
     called = {"n": 0}
     monkeypatch.setattr(
-        ep, "submit_video_for_processing",
+        ep,
+        "submit_video_for_processing",
         lambda *a, **k: called.__setitem__("n", called["n"] + 1),
     )
     r = _client(current_user=None).post(

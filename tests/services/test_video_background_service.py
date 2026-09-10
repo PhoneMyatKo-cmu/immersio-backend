@@ -29,6 +29,7 @@ except Exception as exc:
 pytestmark = [pytest.mark.unit, pytest.mark.video_submission]
 
 SURFACES = ["食べる", "食べる", "猫"]  # FX-VS-SURFACES (duplicates preserved)
+VocabCaptionMap = {"食べる": [1], "猫": [2]}
 
 
 # --- BG-01 ------------------------------------------------------------------
@@ -38,10 +39,15 @@ def test_builds_vocab_profile_and_closes_session(monkeypatch):
     build = MagicMock()
     monkeypatch.setattr(svc, "save_video_vocab_profile", build)
 
-    process_video_vocab_background(1, SURFACES)
+    process_video_vocab_background(1, SURFACES, VocabCaptionMap)
 
     # the worker delegates persistence on its own session with the given inputs
-    build.assert_called_once_with(video_id=1, surface_forms=SURFACES, db=session)
+    build.assert_called_once_with(
+        video_id=1,
+        surface_forms=SURFACES,
+        vocab_caption_map=VocabCaptionMap,
+        db=session,
+    )
     session.rollback.assert_not_called()
     session.close.assert_called_once()
 
@@ -56,7 +62,7 @@ def test_rolls_back_and_logs_on_persistence_error(monkeypatch, caplog):
 
     with caplog.at_level(logging.ERROR):
         # the worker must swallow the error (background task: never propagates)
-        process_video_vocab_background(1, SURFACES)
+        process_video_vocab_background(1, SURFACES, VocabCaptionMap)
 
     session.rollback.assert_called_once()
     session.close.assert_called_once()  # session still closed on the error path

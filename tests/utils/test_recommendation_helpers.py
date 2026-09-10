@@ -24,7 +24,7 @@ from utils.recommendation_helpers import (
 )
 
 
-# Test compute_known_weight
+# Test compute_known_weight UTC-92
 def test_compute_known_weight_more_mastered():
     exposure = UserVocabularyExposure(status=VocabStatus.seen, seen_count=8)
     saved = UserSavedVocabulary(srs_state=SRSState.mastered)
@@ -208,7 +208,7 @@ def test_due_factor_not_schedule():
 
 
 def test_due_factor_not_due():
-    df = due_factor(datetime.datetime(2026, 9, 7), datetime.datetime.utcnow())
+    df = due_factor(datetime.datetime(2026, 9, 20), datetime.datetime.utcnow())
     assert df == 0
 
 

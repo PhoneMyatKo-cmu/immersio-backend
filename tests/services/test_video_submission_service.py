@@ -64,8 +64,8 @@ DEFAULT_PROCESSED = [
         "end": 1.0,
         "duration": 1.0,
         "tokens": [
-            {"surface": "猫", "base_form": "猫"},
-            {"surface": "が", "base_form": "が"},
+            {"surface": "猫", "lemma": "猫", "base_form": "猫"},
+            {"surface": "が", "lemma": "が", "base_form": "が"},
         ],
     }
 ]

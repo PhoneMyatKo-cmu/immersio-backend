@@ -14,20 +14,20 @@ constraint-enforcing database (Postgres).
 import pytest
 
 try:
+    import models.sentence  # noqa: F401  (Video.shadowingsentences relationship target)
+    from models.processed_caption import Caption
     from models.user import User
+    from models.user_vocab_library import UserSavedVocabulary
     from models.video import Video
     from models.vocab import EstimatedLevel, Vocabulary
-    from models.processed_caption import Caption
-    import models.sentence  # noqa: F401  (Video.shadowingsentences relationship target)
-    from models.user_vocab_library import UserSavedVocabulary
     from schemas.vocab_context import UserVocabSave
     from services.user_vocab.user_vocab_service import (
-        save_vocab_to_library,
         check_duplicate_vocab,
-        get_user_saved_vocab,
-        get_review_vocab_by_user,
-        get_user_vocab_by_user_and_vocab_id,
         delete_user_vocab,
+        get_review_vocab_by_user,
+        get_user_saved_vocab,
+        get_user_vocab_by_user_and_vocab_id,
+        save_vocab_to_library,
     )
 except Exception as exc:
     pytest.skip(f"user_vocab_service unavailable: {exc}", allow_module_level=True)
@@ -37,30 +37,52 @@ pytestmark = [pytest.mark.integration, pytest.mark.word_lookup]
 
 def _seed(db, email="a@example.com"):
     user = User(first_name="A", last_name="B", email=email, password_hash="x")
-    vocab = Vocabulary(japanese_form="食べる", reading="taberu",
-                       meanings=[{"pos": "verb", "meanings": ["to eat"]}],
-                       estimated_level=EstimatedLevel.N5)
-    video = Video(youtube_video_id="vid12345678", title="T", thumbnail_url="u",
-                  channel_name="C", duration_seconds=10)
+    vocab = Vocabulary(
+        japanese_form="食べる",
+        reading="taberu",
+        meanings=[{"pos": "verb", "meanings": ["to eat"]}],
+        estimated_level=EstimatedLevel.N5,
+        lemma="食べる",
+    )
+    video = Video(
+        youtube_video_id="vid12345678",
+        title="T",
+        thumbnail_url="u",
+        channel_name="C",
+        duration_seconds=10,
+    )
     db.add_all([user, vocab, video])
     db.commit()
-    caption = Caption(video_id=video.id, caption_index=0, text="毎日ご飯を食べる。",
-                      tokens=[], start_time=0.0, end_time=1.0, duration=1.0)
+    caption = Caption(
+        video_id=video.id,
+        caption_index=0,
+        text="毎日ご飯を食べる。",
+        tokens=[],
+        start_time=0.0,
+        end_time=1.0,
+        duration=1.0,
+    )
     db.add(caption)
     db.commit()
-    db.refresh(user); db.refresh(vocab); db.refresh(video); db.refresh(caption)
+    db.refresh(user)
+    db.refresh(vocab)
+    db.refresh(video)
+    db.refresh(caption)
     return user, vocab, video, caption
 
 
 def _save(vocab, video, caption, timestamp=1.0):
-    return UserVocabSave(vocab_id=vocab.id, video_id=video.id,
-                         caption_id=caption.id, timestamp=timestamp)
+    return UserVocabSave(
+        vocab_id=vocab.id, video_id=video.id, caption_id=caption.id, timestamp=timestamp
+    )
 
 
 # --- VDS-02 -----------------------------------------------------------------
 def test_save_vocab_to_library_inserts_with_default_srs(db_session):
     user, vocab, video, caption = _seed(db_session)
-    save_vocab_to_library(_save(vocab, video, caption, timestamp=12.5), user.id, db_session)
+    save_vocab_to_library(
+        _save(vocab, video, caption, timestamp=12.5), user.id, db_session
+    )
 
     row = check_duplicate_vocab(user.id, vocab.id, db_session)
     assert row is not None
@@ -83,12 +105,16 @@ def test_check_duplicate_vocab_scoped_per_user(db_session):
 
     assert check_duplicate_vocab(user.id, vocab.id, db_session) is not None
 
-    other = User(first_name="C", last_name="D", email="c@example.com", password_hash="x")
+    other = User(
+        first_name="C", last_name="D", email="c@example.com", password_hash="x"
+    )
     db_session.add(other)
     db_session.commit()
     db_session.refresh(other)
-    assert check_duplicate_vocab(other.id, vocab.id, db_session) is None      # other user
-    assert check_duplicate_vocab(user.id, vocab.id + 999, db_session) is None  # other vocab
+    assert check_duplicate_vocab(other.id, vocab.id, db_session) is None  # other user
+    assert (
+        check_duplicate_vocab(user.id, vocab.id + 999, db_session) is None
+    )  # other vocab
 
 
 # ==========================================================================
@@ -124,12 +150,14 @@ def _use_date_semantics():
 @pytest.fixture()
 def saved_db():
     _use_date_semantics()
-    engine = create_engine("sqlite://", connect_args={"check_same_thread": False},
-                           poolclass=StaticPool)
+    engine = create_engine(
+        "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
+    )
     for table in (User.__table__, Video.__table__, UserSavedVocabulary.__table__):
         table.create(engine)
-    Session = sessionmaker(bind=engine, autoflush=False, autocommit=False,
-                           expire_on_commit=False)
+    Session = sessionmaker(
+        bind=engine, autoflush=False, autocommit=False, expire_on_commit=False
+    )
     session = Session()
     try:
         yield session
@@ -139,20 +167,40 @@ def saved_db():
 
 
 def _user(db):
-    u = User(first_name="A", last_name="B",
-             email=f"u{next(_seq)}@example.com", password_hash="x")
-    v = Video(youtube_video_id=f"vid{next(_seq):011d}", title="T", thumbnail_url="u",
-              channel_name="C", duration_seconds=10)
+    u = User(
+        first_name="A",
+        last_name="B",
+        email=f"u{next(_seq)}@example.com",
+        password_hash="x",
+    )
+    v = Video(
+        youtube_video_id=f"vid{next(_seq):011d}",
+        title="T",
+        thumbnail_url="u",
+        channel_name="C",
+        duration_seconds=10,
+    )
     db.add_all([u, v])
     db.commit()
     return u, v
 
 
-def _card(db, user, video, *, vocab_id=50, is_deleted=False, srs_state="studying",
-          next_review_date=None):
+def _card(
+    db,
+    user,
+    video,
+    *,
+    vocab_id=50,
+    is_deleted=False,
+    srs_state="studying",
+    next_review_date=None,
+):
     card = UserSavedVocabulary(
-        user_id=user.id, vocab_id=vocab_id, video_id=video.id,
-        is_deleted=is_deleted, srs_state=srs_state,
+        user_id=user.id,
+        vocab_id=vocab_id,
+        video_id=video.id,
+        is_deleted=is_deleted,
+        srs_state=srs_state,
         next_review_date=next_review_date,
     )
     db.add(card)
@@ -199,7 +247,9 @@ def test_get_review_vocab_excludes_future_mastered_and_deleted(saved_db):
     user, video = _user(saved_db)
     today = date.today()
     _card(saved_db, user, video, vocab_id=1, next_review_date=today + timedelta(days=3))
-    _card(saved_db, user, video, vocab_id=2, next_review_date=today, srs_state="mastered")
+    _card(
+        saved_db, user, video, vocab_id=2, next_review_date=today, srs_state="mastered"
+    )
     _card(saved_db, user, video, vocab_id=3, next_review_date=today, is_deleted=True)
 
     assert get_review_vocab_by_user(user.id, saved_db) == []
@@ -229,9 +279,13 @@ def test_get_user_vocab_by_user_and_vocab_id_misses(saved_db):
     other, _ = _user(saved_db)
     _card(saved_db, user, video, vocab_id=50, is_deleted=True)
 
-    assert get_user_vocab_by_user_and_vocab_id(user.id, 50, saved_db) is None   # deleted
-    assert get_user_vocab_by_user_and_vocab_id(other.id, 50, saved_db) is None  # other user
-    assert get_user_vocab_by_user_and_vocab_id(user.id, 999, saved_db) is None  # missing
+    assert get_user_vocab_by_user_and_vocab_id(user.id, 50, saved_db) is None  # deleted
+    assert (
+        get_user_vocab_by_user_and_vocab_id(other.id, 50, saved_db) is None
+    )  # other user
+    assert (
+        get_user_vocab_by_user_and_vocab_id(user.id, 999, saved_db) is None
+    )  # missing
 
 
 # --- MD-120 -------------------------------------------------------------
@@ -250,5 +304,5 @@ def test_delete_user_vocab_returns_false_when_nothing_to_delete(saved_db):
     user, video = _user(saved_db)
     _card(saved_db, user, video, vocab_id=50, is_deleted=True)
 
-    assert delete_user_vocab(user.id, 50, saved_db) is False   # already deleted
+    assert delete_user_vocab(user.id, 50, saved_db) is False  # already deleted
     assert delete_user_vocab(user.id, 999, saved_db) is False  # missing
