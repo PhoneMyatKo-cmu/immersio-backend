@@ -24,7 +24,7 @@ from services.user_vocab.user_vocab_service import (
     get_user_saved_vocab,
 )
 from services.user_vocab_exposure.user_vocab_exposure_service import (
-    get_vocab_exposure_by_user,
+    get_user_vocab_exposure,
 )
 from services.video.video_services import (
     get_video_eligible_for_recommendation,
@@ -176,7 +176,7 @@ def get_recommended_videos(
 
 
 def get_vocab_weights(user_id: int, db: Session):
-    exposed_vocab = get_vocab_exposure_by_user(user_id, db)
+    exposed_vocab = get_user_vocab_exposure(user_id, db)
     saved_vocab = get_user_saved_vocab(user_id, db)
     # known_weights=compute_known_weight(exposed_vocab,saved_vocab)
     exposure_by_vocab = {e.vocab_id: e for e in exposed_vocab}
