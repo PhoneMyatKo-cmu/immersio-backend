@@ -55,7 +55,13 @@ def _to_item(video, result, cfg) -> RecommendedVideo:
         difficulty=difficulty_tag(cov, cfg),
         new_word_count=result["new_word_count"],
         review_word_count=result["review_word_count"],
-        reasons=None,  # populate only in a debug mode
+        reasons=RecommendationReasons(
+            coverage=result["coverage"],
+            comprehension_fit=result["comprehension_fit"],
+            learning_value=result["learning_value"],
+            srs_bonus=result["srs_bonus"],
+            recency_penalty=result["recency_penalty"],
+        ),  # populate only in a debug mode
     )
 
 

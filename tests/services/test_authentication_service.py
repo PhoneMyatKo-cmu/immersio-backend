@@ -221,6 +221,27 @@ def test_get_user_from_refresh_token_returns_user(monkeypatch):
     assert result is user
 
 
+def test_get_current_user_denies_inactive_user(monkeypatch):
+    # valid token decodes to an email...
+    monkeypatch.setattr(
+        auth,
+        "decode_token",
+        lambda **kwargs: SimpleNamespace(sub="learner@example.com"),
+    )
+    # ...but the user behind it is deactivated
+    monkeypatch.setattr(
+        auth,
+        "get_user_by_email",
+        lambda email, db: SimpleNamespace(is_active=False),
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        auth.get_current_user(token="any-token", db=object())
+
+    assert exc_info.value.status_code == 403
+    assert exc_info.value.detail == "Account is deactivated"
+
+
 def test_get_user_from_refresh_token_rejects_access_token(monkeypatch):
     token = auth.create_access_token("learner@example.com")
     monkeypatch.setattr(auth, "get_user_by_email", lambda email, db: None)
