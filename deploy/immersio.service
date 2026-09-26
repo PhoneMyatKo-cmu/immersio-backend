@@ -1,0 +1,16 @@
+# /etc/systemd/system/immersio.service
+# LD_LIBRARY_PATH: output of the command in deploy/README.md (GPU instances only).
+[Unit]
+Description=Immersio API
+After=network.target docker.service
+
+[Service]
+User=ubuntu
+WorkingDirectory=/home/ubuntu/immersio-backend
+EnvironmentFile=/home/ubuntu/immersio-backend/.env
+Environment=LD_LIBRARY_PATH=<paste path here>
+ExecStart=/home/ubuntu/venv/bin/uvicorn main:app --host 127.0.0.1 --port 8000 --workers 1
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

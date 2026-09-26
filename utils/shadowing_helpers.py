@@ -22,6 +22,21 @@ def transcribe_audio(file):
     words = convert_to_katakana(text)
     return words
 
+def warm_up_scoring():
+    # One throwaway pass: loads Whisper onto the device (and initialises CUDA)
+    # and triggers pyin's one-time numba compile, which otherwise lands on the
+    # first real scoring request.
+    tone = (0.1 * np.sin(2 * np.pi * 220 * np.arange(16000) / 16000)).astype(np.float32)
+    transcribe_words(tone, get_model("medium"), language="ja", vad_filter=False, word_timestamps=False)
+    librosa.pyin(
+        tone,
+        fmin=librosa.note_to_hz('C2'),
+        fmax=librosa.note_to_hz('C6'),
+        sr=16000,
+        frame_length=2048,
+        hop_length=256,
+    )
+
 def convert_to_katakana(text):
     words = tagger(text)
     s = [(word.surface, word.feature.kana) if word.feature.kana else (word.surface, word.surface) for word in words]

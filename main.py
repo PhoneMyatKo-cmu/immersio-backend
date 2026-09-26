@@ -1,4 +1,5 @@
 import logging
+import os
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -29,15 +30,21 @@ from models.user_vocab_profile import UserVocabularyExposure
 from models.video import Video
 from models.video_vocab_profile import VideoVocabulary
 from models.vocab import Vocabulary
+from utils.shadowing_helpers import warm_up_scoring
 
 app = FastAPI()
 
 app.include_router(user_router)
 app.add_middleware(
     CORSMiddleware,
+    # Comma-separated in CORS_ORIGINS (e.g. the deployed frontend URL);
+    # falls back to the local dev servers.
     allow_origins=[
-        "http://localhost:5173",  # Vite dev server
-        "http://localhost:3000",  # CRA dev server
+        origin.strip()
+        for origin in os.getenv(
+            "CORS_ORIGINS", "http://localhost:5173,http://localhost:3000"
+        ).split(",")
+        if origin.strip()
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -52,6 +59,10 @@ logging.basicConfig(
 @app.on_event("startup")
 def startup():
     Base.metadata.create_all(bind=engine)
+    # Load Whisper and compile pyin up front so the first pronunciation
+    # score after a (re)start isn't slow. Off by default (tests, local dev).
+    if os.getenv("WHISPER_PRELOAD") == "1":
+        warm_up_scoring()
 
 
 @app.get("/")

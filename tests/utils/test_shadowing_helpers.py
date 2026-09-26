@@ -346,3 +346,29 @@ def test_extract_pitch_loads_only_requested_window(
             {"sr": 22050, "offset": expected_offset, "duration": expected_duration},
         )
     ]
+
+
+def test_warm_up_scoring_loads_model_and_runs_pyin(monkeypatch, shadowing_helpers):
+    calls = []
+    model = object()
+
+    monkeypatch.setattr(shadowing_helpers, "get_model", lambda size: calls.append(("get_model", size)) or model)
+    monkeypatch.setattr(
+        shadowing_helpers,
+        "transcribe_words",
+        lambda audio, m, **kwargs: calls.append(("transcribe", m, len(audio), kwargs)) or [],
+    )
+
+    def fake_pyin(y, **kwargs):
+        calls.append(("pyin", len(y), kwargs["sr"]))
+        return np.array([]), np.array([]), np.array([])
+
+    monkeypatch.setattr(shadowing_helpers.librosa, "pyin", fake_pyin)
+
+    shadowing_helpers.warm_up_scoring()
+
+    assert calls == [
+        ("get_model", "medium"),
+        ("transcribe", model, 16000, {"language": "ja", "vad_filter": False, "word_timestamps": False}),
+        ("pyin", 16000, 16000),
+    ]

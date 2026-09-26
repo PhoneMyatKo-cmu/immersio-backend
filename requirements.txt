@@ -106,3 +106,7 @@ passlib[bcrypt]
 bcrypt
 pydantic[email]
  python-multipart
+faster-whisper
+fastdtw
+matplotlib
+google-genai

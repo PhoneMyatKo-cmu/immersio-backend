@@ -1,0 +1,5 @@
+# /etc/caddy/Caddyfile
+# Replace with <elastic-ip-with-dashes>.sslip.io (e.g. 13-250-1-2.sslip.io) or your domain.
+api.example.sslip.io {
+    reverse_proxy 127.0.0.1:8000
+}
