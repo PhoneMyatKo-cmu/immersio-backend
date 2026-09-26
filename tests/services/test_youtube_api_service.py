@@ -99,3 +99,33 @@ def test_returns_none_for_private_video(monkeypatch):
     _patch_httpx(monkeypatch, _FakeResponse(200, {"items": [_item(privacy="private")]}))
 
     assert fetch_video_metadata("dQw4w9WgXcQ") is None
+
+
+# --- YOUTUBE_PROXY ----------------------------------------------------------
+
+
+class _FakeYDL:
+    """Captures the options download_audio passes to yt-dlp."""
+
+    opts = None
+
+    def __init__(self, opts):
+        _FakeYDL.opts = opts
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+    def extract_info(self, url, download):
+        return {"requested_downloads": [{"filepath": "/tmp/abc.wav"}]}
+
+
+@pytest.mark.parametrize("proxy", ["http://user:pass@proxy:8080", None])
+def test_download_audio_routes_through_proxy_only_when_set(monkeypatch, proxy):
+    monkeypatch.setattr(svc, "YOUTUBE_PROXY", proxy)
+    monkeypatch.setattr(svc, "YoutubeDL", _FakeYDL)
+
+    assert svc.download_audio("abc", "/tmp") == "/tmp/abc.wav"
+    assert _FakeYDL.opts.get("proxy") == proxy

@@ -10,6 +10,9 @@ load_dotenv()
 
 YOUTUBE_API_BASE_URL = os.getenv("YOUTUBE_API_BASE_URL")
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
+# YouTube blocks datacenter IPs (e.g. EC2) for yt-dlp scraping; route those
+# requests through a residential proxy when set. The Data API calls don't need it.
+YOUTUBE_PROXY = os.getenv("YOUTUBE_PROXY") or None
 
 
 def fetch_video_metadata(video_id: str) -> dict | None:
@@ -89,6 +92,8 @@ def fetch_raw_captions(video_id: str, lang: str = "ja") -> dict:
         "format": None,
         "extract_flat": False,
     }
+    if YOUTUBE_PROXY:
+        ydl_opts["proxy"] = YOUTUBE_PROXY
 
     url = f"https://www.youtube.com/watch?v={video_id}"
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -104,7 +109,8 @@ def fetch_raw_captions(video_id: str, lang: str = "ja") -> dict:
     if not json3_entry:
         raise RuntimeError("No json3 format available")
 
-    data = requests.get(json3_entry["url"]).json()
+    proxies = {"http": YOUTUBE_PROXY, "https": YOUTUBE_PROXY} if YOUTUBE_PROXY else None
+    data = requests.get(json3_entry["url"], proxies=proxies).json()
     return data
 
 def download_audio(url_or_id: str, out_dir: str, extract_wav: bool = False) -> str:
@@ -136,6 +142,9 @@ def download_audio(url_or_id: str, out_dir: str, extract_wav: bool = False) -> s
             "youtube": {"player_client": ["web", "android", "ios"]},
         },
     }
+
+    if YOUTUBE_PROXY:
+        ydl_opts["proxy"] = YOUTUBE_PROXY
 
     if extract_wav:
         ydl_opts["postprocessors"] = [{
