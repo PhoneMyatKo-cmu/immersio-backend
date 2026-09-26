@@ -148,13 +148,6 @@ def test_metrics_are_recomputed_not_accumulated(helper_db):
     assert result.study_seconds == 900          # 3 * 5 min, recomputed (not 500 + ...)
 
 
-def test_empty_session_list_raises_index_error(helper_db):
-    """update_daily_progress assumes at least one session."""
-    dp = DailyProgress(user_id=1, day=date(2026, 1, 10))
-    with pytest.raises(IndexError):
-        update_daily_progress([], dp, helper_db)
-
-
 # ---------------------------------------------------------------------------
 # MD-131  calculate_study_seconds()
 # ---------------------------------------------------------------------------

@@ -85,7 +85,15 @@ async def get_learning_progress_chart(
     for i in range(period_days):
         day = start_date + timedelta(days=i)
         if not any(progress.day == day for progress in daily_progresses):
-            response.append({"day": day, "value": 0})
+            if (type == "total_videos_watched"):
+                previous_total_videos_watched = previous_summary.get("total_videos_watched", 0)
+                if i == 0:
+                    response.append({"day": day, "value": previous_total_videos_watched})
+                else:
+                    previous_day_data = response[-1]
+                    response.append({"day": day, "value": previous_day_data["value"]})
+            else:
+                response.append({"day": day, "value": 0})
         else:
             response.append(filter(lambda x: x["day"] == day, chart_data).__next__())
 

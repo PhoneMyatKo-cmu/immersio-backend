@@ -128,8 +128,8 @@ class RecommendationConfig:
 
     # Difficulty tag thresholds, on coverage. Backend owns these so the
     # label rule lives in one place.
-    difficulty_comfortable_min: float = 0.95  # >= this -> comfortable
-    difficulty_best_fit_min: float = 0.85  # >= this -> best_fit
+    difficulty_comfortable_min: float = 0.97  # >= this -> comfortable
+    difficulty_best_fit_min: float = 0.93  # >= this -> best_fit
     difficulty_stretch_min: float = 0.70  # >= this -> stretch; below -> too_advanced
 
     # Recency hard cutoff: videos watched within this window are excluded

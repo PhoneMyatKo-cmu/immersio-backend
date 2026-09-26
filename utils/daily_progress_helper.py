@@ -128,7 +128,11 @@ def summarize_daily_progresses(daily_progresses: list[DailyProgress], types: lis
     if "study_seconds" in types:
         results["study_seconds"] = sum(progress.study_seconds for progress in daily_progresses)
     if "total_videos_watched" in types:
-        results["total_videos_watched"] = daily_progresses[-1].total_videos_watched if daily_progresses else 0
+        till_date = daily_progresses[-1].day if daily_progresses else date.today()
+        sessions = get_learning_sessions_by_user(daily_progresses[0].user_id, db) if daily_progresses else []
+        sessions_till_date = [session for session in sessions if session.end_time.date() <= till_date]
+        unique_videos = {session.video_id for session in sessions_till_date}
+        results["total_videos_watched"] = len(unique_videos)
     if "vocab_seen" in types:
         results["vocab_seen"] = get_vocab_seen_count_by_user(daily_progresses[0].user_id, db) if daily_progresses else 0
     if "vocab_known" in types:

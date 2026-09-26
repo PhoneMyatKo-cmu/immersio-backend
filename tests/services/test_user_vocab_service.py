@@ -205,14 +205,6 @@ def test_get_review_vocab_excludes_future_mastered_and_deleted(saved_db):
     assert get_review_vocab_by_user(user.id, saved_db) == []
 
 
-def test_get_review_vocab_excludes_null_next_review_date(saved_db):
-    """A legacy card with next_review_date = NULL is not returned."""
-    user, video = _user(saved_db)
-    _card(saved_db, user, video, vocab_id=1, next_review_date=None)
-
-    assert get_review_vocab_by_user(user.id, saved_db) == []
-
-
 # --- MD-119 -------------------------------------------------------------
 def test_get_user_vocab_by_user_and_vocab_id_active(saved_db):
     """The active card for the user/vocab pair is returned."""

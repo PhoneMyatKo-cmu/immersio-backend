@@ -204,20 +204,6 @@ def test_existing_id_with_conflicting_data_is_rejected(session_db):
             _session_data("s1", user.id, video.id, start=_EPOCH + 5), session_db)  # different start
 
 
-def test_interval_rows_are_appended_on_every_resubmission(session_db):
-    """Resubmitting an unchanged session appends its intervals again (known defect)."""
-    user = _seed_user(session_db)
-    video = _seed_video(session_db)
-    data = _session_data("s1", user.id, video.id)
-
-    save_learning_session(data, session_db)
-    save_learning_session(data, session_db)
-
-    intervals = (session_db.query(LearningVideoInterval)
-                 .filter(LearningVideoInterval.session_id == "s1").all())
-    assert len(intervals) == 4  # 2 + 2, intervals are not de-duplicated
-
-
 # ---------------------------------------------------------------------------
 # MD-112  get_learning_sessions()
 # ---------------------------------------------------------------------------

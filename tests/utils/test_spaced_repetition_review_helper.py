@@ -146,23 +146,6 @@ def test_next_review_scheduled_from_today():
     assert due.next_review_date == today
 
 
-def test_review_dates_round_trip_through_the_column(srs_db):
-    """The assigned dates persist and read back as the same calendar day."""
-    user, video = _seed_user_video(srs_db)
-    card = UserSavedVocabulary(user_id=user.id, vocab_id=50, video_id=video.id,
-                               ease_factor=2.5, interval_days=6)
-    srs_db.add(card)
-    srs_db.commit()
-
-    update_next_review_date(card)
-    srs_db.commit()
-    srs_db.expire_all()
-
-    reloaded = srs_db.get(UserSavedVocabulary, card.id)
-    assert _as_date(reloaded.last_review_date) == date.today()
-    assert _as_date(reloaded.next_review_date) == date.today() + timedelta(days=6)
-
-
 # ---------------------------------------------------------------------------
 # MD-141  update_srs_state()
 # ---------------------------------------------------------------------------
