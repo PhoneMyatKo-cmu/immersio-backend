@@ -100,15 +100,16 @@ def analyze_pitch_accent(ref_audio_path, target_audio_path, sr=22050,
     }
 
 def extract_pitch(audio_path: str, sr: int = 22050, start_time: float = 0.0, end_time: float = None) -> (np.ndarray, int):
-    y, sr = librosa.load(audio_path, sr=sr)
-    if end_time is not None:
-        y = y[int(start_time * sr):int(end_time * sr)]
+    # Decode only the requested window instead of the whole file — reference
+    # audio is the full video, so loading it all costs seconds per request.
+    duration = end_time - start_time if end_time is not None else None
+    y, sr = librosa.load(audio_path, sr=sr, offset=start_time, duration=duration)
 
     # pyin is more accurate than yin for voiced/unvoiced detection
     f0, voiced_flag, voiced_probs = librosa.pyin(
         y,
         fmin=librosa.note_to_hz('C2'),   # ~65 Hz  — lowest expected pitch
-        fmax=librosa.note_to_hz('C7'),   # ~2093 Hz — highest expected pitch
+        fmax=librosa.note_to_hz('C6'),   # ~1047 Hz — well above speech F0; higher picks are octave errors/noise
         sr=sr,
         frame_length=2048,
         hop_length=256,

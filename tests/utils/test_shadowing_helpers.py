@@ -17,7 +17,7 @@ def shadowing_helpers(monkeypatch):
     fugashi = types.SimpleNamespace(Tagger=lambda: StubTagger())
     librosa = types.SimpleNamespace(
         load=lambda *args, **kwargs: (np.array([], dtype=float), kwargs.get("sr")),
-        note_to_hz=lambda note: 65.0 if note == "C2" else 2093.0,
+        note_to_hz=lambda note: 65.0 if note == "C2" else 1047.0,
         pyin=lambda *args, **kwargs: (
             np.array([], dtype=float),
             np.array([], dtype=bool),
@@ -318,3 +318,31 @@ def test_transcribe_audio_uses_medium_model_and_converts_text(
         {"language": "ja", "vad_filter": True, "word_timestamps": False},
     )
     assert calls["converted_text"] == "こんにちは"
+
+
+@pytest.mark.parametrize(
+    ("start_time", "end_time", "expected_offset", "expected_duration"),
+    [
+        (1.5, 4.0, 1.5, 2.5),
+        (0.0, None, 0.0, None),
+    ],
+)
+def test_extract_pitch_loads_only_requested_window(
+    monkeypatch, shadowing_helpers, start_time, end_time, expected_offset, expected_duration
+):
+    load_calls = []
+
+    def fake_load(path, **kwargs):
+        load_calls.append((path, kwargs))
+        return np.array([], dtype=float), kwargs["sr"]
+
+    monkeypatch.setattr(shadowing_helpers.librosa, "load", fake_load)
+
+    shadowing_helpers.extract_pitch("reference.wav", 22050, start_time, end_time)
+
+    assert load_calls == [
+        (
+            "reference.wav",
+            {"sr": 22050, "offset": expected_offset, "duration": expected_duration},
+        )
+    ]
