@@ -22,7 +22,7 @@ def save_vocab_to_library(saveVocab: UserVocabSave, user_id: int, db: Session):
     existing_vocab = db.scalars(
         select(UserSavedVocabulary).where(
             UserSavedVocabulary.user_id == user_id,
-            UserSavedVocabulary.vocab_id == saveVocab.vocab_id
+            UserSavedVocabulary.vocab_id == saveVocab.vocab_id,
         )
     ).first()
     if existing_vocab:
@@ -31,7 +31,9 @@ def save_vocab_to_library(saveVocab: UserVocabSave, user_id: int, db: Session):
             existing_vocab.video_id = saveVocab.video_id
             existing_vocab.caption_id = saveVocab.caption_id
             existing_vocab.timestamp = saveVocab.timestamp
-            existing_vocab.next_review_date = datetime.now().date()  # Reset the next review date to today
+            existing_vocab.next_review_date = (
+                datetime.now().date()
+            )  # Reset the next review date to today
             db.commit()
         else:
             raise Exception("Vocabulary already exists in the user's library.")
@@ -81,8 +83,9 @@ def get_studying_vocab_by_user(user_id: int, db: Session):
     return (
         db.query(UserSavedVocabulary)
         .filter(
+            UserSavedVocabulary.user_id == user_id,
             UserSavedVocabulary.srs_state == "studying",
-            not UserSavedVocabulary.is_deleted,
+            UserSavedVocabulary.is_deleted.is_(False),
         )
         .all()
     )

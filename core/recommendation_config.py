@@ -74,7 +74,7 @@ class RecommendationConfig:
     # A word must appear at least this many times in a video to count as a
     # realistic learning target (incidental-acquisition research: ~8-12+
     # encounters; kept at 1 for now so nothing is dropped, tune upward later).
-    learnable_min_freq: int = 1
+    learnable_min_freq: int = 3
 
     # ------------------------------------------------------------------ #
     # SRSReviewBonus (§5)

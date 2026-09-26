@@ -47,7 +47,7 @@ def _all_forms(db):
 @pytest.mark.video_submission
 def test_save_vocabularies_inserts_new_words(monkeypatch, db_session):
     monkeypatch.setattr(svc, "lookup_word_full", _fake_lookup)
-    save_vocabularies([("猫", "猫"), ("犬", "犬")], db_session)
+    save_vocabularies([("猫", "猫", "猫"), ("犬", "犬", "犬")], db_session)
     forms = _all_forms(db_session)
     assert set(forms) == {"猫", "犬"}
 
@@ -61,12 +61,13 @@ def test_save_vocabularies_skips_existing_word(monkeypatch, db_session):
             reading="neko",
             meanings=[{"pos": "noun", "meanings": ["cat"]}],
             estimated_level=EstimatedLevel.N5,
+            lemma="猫",
         )
     )
     db_session.commit()
 
     monkeypatch.setattr(svc, "lookup_word_full", _fake_lookup)
-    save_vocabularies([("猫", "猫"), ("犬", "犬")], db_session)
+    save_vocabularies([("猫", "猫", "猫"), ("犬", "犬", "犬")], db_session)
 
     forms = _all_forms(db_session)
     assert forms.count("猫") == 1  # not duplicated
@@ -77,7 +78,7 @@ def test_save_vocabularies_skips_existing_word(monkeypatch, db_session):
 @pytest.mark.video_submission
 def test_save_vocabularies_dedups_within_input(monkeypatch, db_session):
     monkeypatch.setattr(svc, "lookup_word_full", _fake_lookup)
-    save_vocabularies([("猫", "猫"), ("猫", "猫")], db_session)
+    save_vocabularies([("猫", "猫", "猫"), ("猫", "猫", "猫")], db_session)
     assert _all_forms(db_session).count("猫") == 1
 
 
@@ -90,6 +91,7 @@ def test_get_vocab_by_surface_form_returns_row_if_found(db_session):
             reading="taberu",
             meanings=[{"pos": "verb", "meanings": ["to eat"]}],
             estimated_level=EstimatedLevel.N5,
+            lemma="食べる",
         )
     )
     db_session.commit()
@@ -108,6 +110,7 @@ def test_get_vocab_by_surface_form_returns_none_if_not_found(db_session):
             reading="taberu",
             meanings=[{"pos": "verb", "meanings": ["to eat"]}],
             estimated_level=EstimatedLevel.N5,
+            lemma="食べる",
         )
     )
     db_session.commit()
@@ -131,11 +134,13 @@ from sqlalchemy.pool import StaticPool  # noqa: E402
 
 @pytest.fixture()
 def vocab_db():
-    engine = create_engine("sqlite://", connect_args={"check_same_thread": False},
-                           poolclass=StaticPool)
+    engine = create_engine(
+        "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
+    )
     Vocabulary.__table__.create(engine)
-    Session = sessionmaker(bind=engine, autoflush=False, autocommit=False,
-                           expire_on_commit=False)
+    Session = sessionmaker(
+        bind=engine, autoflush=False, autocommit=False, expire_on_commit=False
+    )
     session = Session()
     try:
         yield session
@@ -147,9 +152,13 @@ def vocab_db():
 @pytest.mark.word_lookup
 def test_get_vocab_by_id_returns_row(vocab_db):
     """The Vocabulary row is returned with its fields populated."""
-    row = Vocabulary(japanese_form="食べる", reading="taberu", lemma="食べる",
-                     meanings=[{"pos": "verb", "meanings": ["to eat"]}],
-                     estimated_level=EstimatedLevel.N5)
+    row = Vocabulary(
+        japanese_form="食べる",
+        reading="taberu",
+        lemma="食べる",
+        meanings=[{"pos": "verb", "meanings": ["to eat"]}],
+        estimated_level=EstimatedLevel.N5,
+    )
     vocab_db.add(row)
     vocab_db.commit()
 

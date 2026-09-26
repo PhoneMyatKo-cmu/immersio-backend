@@ -234,6 +234,7 @@ def test_process_captions_adds_tokens_and_normalizes():
             "pos",
             "pos_detail",
             "is_content_word",
+            "lemma",
         }
 
 

@@ -20,9 +20,9 @@ from models.learning_session import LearningSession  # noqa: F401 (registers tab
 from models.user import EstimatedLevel, User, UserRole
 from models.user_vocab_profile import UserVocabularyExposure, VocabStatus
 from models.video import Video, VideoSource
+from models.video_vocab_profile import VideoVocabulary
 from models.vocab import EstimatedLevel as VocabLevel
 from models.vocab import Vocabulary
-from models.video_vocab_profile import VideoVocabulary
 
 pytestmark = [pytest.mark.integration, pytest.mark.recommendation]
 
@@ -230,4 +230,4 @@ def test_recommendation_endpoint_empty_catalog(rec_client):
     client, user, db = rec_client
     resp = client.get("/video/recommendation")
     assert resp.status_code == 200
-    assert resp.json()["sections"] == []
+    assert resp.json()["sections"][0]["items"] == []

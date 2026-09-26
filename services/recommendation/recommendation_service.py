@@ -55,7 +55,13 @@ def _to_item(video, result, cfg) -> RecommendedVideo:
         difficulty=difficulty_tag(cov, cfg),
         new_word_count=result["new_word_count"],
         review_word_count=result["review_word_count"],
-        reasons=None,  # populate only in a debug mode
+        reasons=RecommendationReasons(
+            coverage=result["coverage"],
+            comprehension_fit=result["comprehension_fit"],
+            learning_value=result["learning_value"],
+            srs_bonus=result["srs_bonus"],
+            recency_penalty=result["recency_penalty"],
+        ),  # populate only in a debug mode
     )
 
 
@@ -146,7 +152,10 @@ def get_recommended_videos(
             items=comfortable[: CONFIG.row_size],
         ),
     ]
-    sections = [s for s in sections if s.items]  # drop empty rows
+    # sections = [
+    #     s for s in sections if s.items and s.key != "top_picks"
+    # ]  # drop empty rows
+    print(sections)
 
     return RecommendationFeed(is_cold_start=is_cold_start, sections=sections)
 

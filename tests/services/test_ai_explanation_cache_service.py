@@ -154,6 +154,7 @@ def test_cache_key_is_vocab_caption_pair(db_session):
         reading="taberu",
         meanings=[{"pos": "verb", "meanings": ["to eat"]}],
         estimated_level=EstimatedLevel.N5,
+        lemma="食べる",
     )
     video = Video(
         youtube_video_id="vid12345678",

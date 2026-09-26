@@ -36,6 +36,7 @@ def test_authenticate_user_returns_user_for_valid_credentials(monkeypatch):
     user = SimpleNamespace(
         email="learner@example.com",
         password_hash=auth.hash_password("secret-password"),
+        is_active=True,
     )
     calls = []
 
@@ -44,7 +45,7 @@ def test_authenticate_user_returns_user_for_valid_credentials(monkeypatch):
         return user
 
     monkeypatch.setattr(auth, "get_user_by_email", fake_get_user_by_email)
-    db = object()
+    db = SimpleNamespace(commit=lambda: None)
 
     result = auth.authenticate_user(db, "learner@example.com", "secret-password")
 
@@ -183,7 +184,7 @@ def test_clear_expired_revocations_removes_old_entries():
 
 def test_get_current_user_returns_user_for_valid_access_token(monkeypatch):
     token = auth.create_access_token("learner@example.com")
-    user = SimpleNamespace(email="learner@example.com")
+    user = SimpleNamespace(email="learner@example.com", is_active=True)
     calls = []
 
     def fake_get_user_by_email(email, db):
@@ -191,7 +192,7 @@ def test_get_current_user_returns_user_for_valid_access_token(monkeypatch):
         return user
 
     monkeypatch.setattr(auth, "get_user_by_email", fake_get_user_by_email)
-    db = object()
+    db = SimpleNamespace(commit=lambda: None)
 
     result = auth.get_current_user(token=token, db=db)
 
@@ -212,12 +213,33 @@ def test_get_current_user_rejects_valid_token_for_missing_user(monkeypatch):
 
 def test_get_user_from_refresh_token_returns_user(monkeypatch):
     token = auth.create_refresh_token("learner@example.com")
-    user = SimpleNamespace(email="learner@example.com")
+    user = SimpleNamespace(email="learner@example.com", is_active=True)
     monkeypatch.setattr(auth, "get_user_by_email", lambda email, db: user)
 
     result = auth.get_user_from_refresh_token(token, object())
 
     assert result is user
+
+
+def test_get_current_user_denies_inactive_user(monkeypatch):
+    # valid token decodes to an email...
+    monkeypatch.setattr(
+        auth,
+        "decode_token",
+        lambda **kwargs: SimpleNamespace(sub="learner@example.com"),
+    )
+    # ...but the user behind it is deactivated
+    monkeypatch.setattr(
+        auth,
+        "get_user_by_email",
+        lambda email, db: SimpleNamespace(is_active=False),
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        auth.get_current_user(token="any-token", db=object())
+
+    assert exc_info.value.status_code == 403
+    assert exc_info.value.detail == "Account is deactivated"
 
 
 def test_get_user_from_refresh_token_rejects_access_token(monkeypatch):

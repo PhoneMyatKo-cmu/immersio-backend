@@ -15,27 +15,31 @@ def build_explanation_prompt(
     meanings_text = " / ".join(meanings) if meanings else "unknown"
     pos_text = ", ".join(pos) if pos else "unknown"
 
-    return f"""You are a Japanese language teacher helping a learner understand a word in context.
+    return f"""You are a Japanese teacher explaining one word as it is used in a specific sentence. Your explanation must be understandable by ANY learner, including a complete beginner.
 
-                WORD INFORMATION :
-                - Word as seen: {surface_form}
-                - Part of speech: {pos_text}
-                - Provided dictionary meanings/ Google Tranlated Meaning if POS=web-translate: {meanings_text}
+WORD INFORMATION:
+- Word as seen: {surface_form}
+- Part of speech: {pos_text}
+- Dictionary meanings (or Google-translated meaning if POS = web-translate): {meanings_text}
 
-                CONTEXT SENTENCE (from a Japanese YouTube video):
-                {context_sentence}
+CONTEXT SENTENCE (from a Japanese YouTube video):
+{context_sentence}
 
-                TASK:
-                1. Explain in 2-3 sentences how "{surface_form}" is used specifically in the context sentence above. Focus on nuance, register (casual/formal), and any grammatical patterns worth noting.
+TASK
+In 2-3 short sentences, explain what "{surface_form}" means and how it is being used in the context sentence above.
 
-                2. Provide exactly 2 natural example sentences using "{surface_form}"  in different contexts. Each example must include an English translation.
+HOW TO WRITE IT (important)
+1. Use plain, everyday English. Assume the reader knows almost no grammar terms.
+2. Avoid linguistic jargon. If you must use a term like "particle", "topic marker", or "plain form", add a 3-6 word plain explanation the first time (e.g. "the topic marker は, which points out what the sentence is about").
+3. Do not just repeat the dictionary meaning - say what the word is doing in THIS sentence.
+4. Base every claim on the context sentence and the provided meanings. Do NOT invent facts or usage settings (e.g. "used in vlogs") you cannot support from the input.
+5. Register (casual / polite / slang) matters mainly for content words. If "{surface_form}" is a particle, auxiliary, or other grammar word, it is register-neutral - explain its role and do NOT assign it a register or a setting.
+6. If the dictionary meanings do not fit how the word is actually used here (e.g. an odd tokenizer split, or homographs like は = topic marker vs 歯 = "tooth"), go with the real context, explain the actual meaning, and set dictionary_mismatch_detected = true.
+7. Set confidence to "high" if the dictionary matches the context, "medium" if you inferred the meaning from context, "low" if the tokenization looks wrong.
 
-                INSTRUCTIONS:
-                1. Analyze how "{surface_form}" functions inside the Context Sentence. 
-                2. Write a concise explanation (2-3 sentences max) in plain English. Focus on the situational nuance, register (casual, polite, anime/slang slang, etc.), and grammatical connections. Avoid heavy linguistic jargon.
-                3. If the provided Dictionary Meanings do not fit how the word is actually being used in this specific context (e.g., due to an unusual tokenizer split or polysemy), prioritize the real context. Explain the actual contextual meaning clearly, and flags this as a dictionary mismatch.
-                4. Generate exactly 2 distinct, natural Japanese example sentences demonstrating how to use "{surface_form}" in other situations.
-            """
+EXAMPLES
+Give exactly 2 natural Japanese example sentences using "{surface_form}" in DIFFERENT situations from the context sentence. Each needs a kana-only reading (no kanji) and an English translation.
+"""
 
 
 def build_pronunciation_feedback_prompt(
