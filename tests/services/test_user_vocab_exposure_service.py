@@ -203,8 +203,11 @@ def test_first_exposure_creates_a_new_record(exposure_db):
     assert _status(exp[0]) == "SEEN"
     assert exp[0].first_seen_at == _NOW and exp[0].last_seen_at == _NOW
 
+    # session_vocabulary.vocab_id references vocabulary.id (the word), not the
+    # video_vocabulary row id.
     sv = exposure_db.query(SessionVocabulary).all()
-    assert len(sv) == 1 and sv[0].vocab_id == prof.id
+    assert prof.id != 50
+    assert len(sv) == 1 and sv[0].vocab_id == 50
 
 
 def test_repeat_exposure_increments_and_promotes_at_threshold(exposure_db):
@@ -235,7 +238,7 @@ def test_vocab_already_recorded_for_the_session_is_skipped(exposure_db):
     prof = _add_profile(exposure_db, video.id, vocab_id=50, caption_indices="3")
     _expose(exposure_db, user.id, 50, seen_count=3)
     old = _add_session(exposure_db, "s_old", user.id, video.id)
-    exposure_db.add(SessionVocabulary(session_id=old.id, vocab_id=prof.id))
+    exposure_db.add(SessionVocabulary(session_id=old.id, vocab_id=prof.vocab_id))
     exposure_db.commit()
     new = _add_session(exposure_db, "s_new", user.id, video.id, intervals=((4.0, 10.0),))
 

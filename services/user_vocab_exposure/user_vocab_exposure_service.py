@@ -46,7 +46,7 @@ def save_user_vocab_exposure(session_data: LearningSession, db: Session):
 
     # Process each vocabulary profile and check for exposure within the session intervals
     for vocab_profile in video_vocab_profiles:
-        if any(sv.vocab_id == vocab_profile.id for sv in existing_session_vocabs):
+        if any(sv.vocab_id == vocab_profile.vocab_id for sv in existing_session_vocabs):
             print(
                 f"Vocabulary {vocab_profile.vocab_id} already recorded for this session. Skipping."
             )
@@ -105,7 +105,7 @@ def save_user_vocab_exposure(session_data: LearningSession, db: Session):
                             db.add(new_exposure)
                             existing_exposures.append(new_exposure)
                         new_session_vocab = SessionVocabulary(
-                            session_id=session_data.id, vocab_id=vocab_profile.id
+                            session_id=session_data.id, vocab_id=vocab_profile.vocab_id
                         )
                         db.add(new_session_vocab)
                         isRecorded = True
