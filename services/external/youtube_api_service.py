@@ -1,7 +1,7 @@
+import json
 import os
 
 import httpx
-import requests
 import yt_dlp
 from dotenv import load_dotenv
 from yt_dlp import YoutubeDL
@@ -10,9 +10,21 @@ load_dotenv()
 
 YOUTUBE_API_BASE_URL = os.getenv("YOUTUBE_API_BASE_URL")
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
-# YouTube blocks datacenter IPs (e.g. EC2) for yt-dlp scraping; route those
-# requests through a residential proxy when set. The Data API calls don't need it.
+# YouTube blocks datacenter IPs (e.g. EC2) for yt-dlp scraping. Either sign
+# the requests in with an exported cookies.txt (YOUTUBE_COOKIES = file path)
+# and/or route them through a residential proxy (YOUTUBE_PROXY). The Data API
+# calls don't need either.
 YOUTUBE_PROXY = os.getenv("YOUTUBE_PROXY") or None
+YOUTUBE_COOKIES = os.getenv("YOUTUBE_COOKIES") or None
+
+
+def _yt_dlp_network_opts() -> dict:
+    opts = {}
+    if YOUTUBE_PROXY:
+        opts["proxy"] = YOUTUBE_PROXY
+    if YOUTUBE_COOKIES:
+        opts["cookiefile"] = YOUTUBE_COOKIES
+    return opts
 
 
 def fetch_video_metadata(video_id: str) -> dict | None:
@@ -91,26 +103,25 @@ def fetch_raw_captions(video_id: str, lang: str = "ja") -> dict:
         "no_warnings": True,
         "format": None,
         "extract_flat": False,
+        **_yt_dlp_network_opts(),
     }
-    if YOUTUBE_PROXY:
-        ydl_opts["proxy"] = YOUTUBE_PROXY
 
     url = f"https://www.youtube.com/watch?v={video_id}"
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=False)
 
-    subs = info.get("subtitles", {}).get(lang) or info.get(
-        "automatic_captions", {}
-    ).get(lang)
-    if not subs:
-        raise RuntimeError(f"No {lang} captions available for {video_id}")
+        subs = info.get("subtitles", {}).get(lang) or info.get(
+            "automatic_captions", {}
+        ).get(lang)
+        if not subs:
+            raise RuntimeError(f"No {lang} captions available for {video_id}")
 
-    json3_entry = next((s for s in subs if s["ext"] == "json3"), None)
-    if not json3_entry:
-        raise RuntimeError("No json3 format available")
+        json3_entry = next((s for s in subs if s["ext"] == "json3"), None)
+        if not json3_entry:
+            raise RuntimeError("No json3 format available")
 
-    proxies = {"http": YOUTUBE_PROXY, "https": YOUTUBE_PROXY} if YOUTUBE_PROXY else None
-    data = requests.get(json3_entry["url"], proxies=proxies).json()
+        # Fetch through yt-dlp so the caption file gets the same proxy/cookies.
+        data = json.loads(ydl.urlopen(json3_entry["url"]).read())
     return data
 
 def download_audio(url_or_id: str, out_dir: str, extract_wav: bool = False) -> str:
@@ -138,13 +149,10 @@ def download_audio(url_or_id: str, out_dir: str, extract_wav: bool = False) -> s
         "quiet": True,
         "no_warnings": True,
         "noplaylist": True,
-        "extractor_args": {
-            "youtube": {"player_client": ["web", "android", "ios"]},
-        },
+        # No player_client override: yt-dlp's defaults track YouTube changes,
+        # and the android/ios clients can't use cookies.
+        **_yt_dlp_network_opts(),
     }
-
-    if YOUTUBE_PROXY:
-        ydl_opts["proxy"] = YOUTUBE_PROXY
 
     if extract_wav:
         ydl_opts["postprocessors"] = [{

@@ -15,6 +15,7 @@ Covers:
 used. Module skips if its import chain (httpx / yt_dlp / requests) is missing.
 """
 
+import io
 from unittest.mock import MagicMock
 
 import pytest
@@ -101,13 +102,14 @@ def test_returns_none_for_private_video(monkeypatch):
     assert fetch_video_metadata("dQw4w9WgXcQ") is None
 
 
-# --- YOUTUBE_PROXY ----------------------------------------------------------
+# --- YOUTUBE_PROXY / YOUTUBE_COOKIES ---------------------------------------
 
 
 class _FakeYDL:
-    """Captures the options download_audio passes to yt-dlp."""
+    """Captures the options passed to yt-dlp and fakes its network calls."""
 
     opts = None
+    fetched_urls = []
 
     def __init__(self, opts):
         _FakeYDL.opts = opts
@@ -119,13 +121,42 @@ class _FakeYDL:
         return False
 
     def extract_info(self, url, download):
-        return {"requested_downloads": [{"filepath": "/tmp/abc.wav"}]}
+        return {
+            "requested_downloads": [{"filepath": "/tmp/abc.wav"}],
+            "subtitles": {"ja": [{"ext": "json3", "url": "https://captions/abc"}]},
+        }
+
+    def urlopen(self, url):
+        _FakeYDL.fetched_urls.append(url)
+        return io.BytesIO(b'{"events": []}')
 
 
-@pytest.mark.parametrize("proxy", ["http://user:pass@proxy:8080", None])
-def test_download_audio_routes_through_proxy_only_when_set(monkeypatch, proxy):
+@pytest.mark.parametrize(
+    ("proxy", "cookies", "expected"),
+    [
+        (None, None, {}),
+        ("http://user:pass@proxy:8080", None, {"proxy": "http://user:pass@proxy:8080"}),
+        (None, "/home/ubuntu/cookies.txt", {"cookiefile": "/home/ubuntu/cookies.txt"}),
+    ],
+)
+def test_download_audio_passes_network_settings_only_when_set(
+    monkeypatch, proxy, cookies, expected
+):
     monkeypatch.setattr(svc, "YOUTUBE_PROXY", proxy)
+    monkeypatch.setattr(svc, "YOUTUBE_COOKIES", cookies)
     monkeypatch.setattr(svc, "YoutubeDL", _FakeYDL)
 
     assert svc.download_audio("abc", "/tmp") == "/tmp/abc.wav"
-    assert _FakeYDL.opts.get("proxy") == proxy
+    network = {k: v for k, v in _FakeYDL.opts.items() if k in ("proxy", "cookiefile")}
+    assert network == expected
+
+
+def test_fetch_raw_captions_downloads_caption_file_through_yt_dlp(monkeypatch):
+    monkeypatch.setattr(svc, "YOUTUBE_PROXY", None)
+    monkeypatch.setattr(svc, "YOUTUBE_COOKIES", "/home/ubuntu/cookies.txt")
+    monkeypatch.setattr(svc.yt_dlp, "YoutubeDL", _FakeYDL)
+    _FakeYDL.fetched_urls = []
+
+    assert svc.fetch_raw_captions("abc") == {"events": []}
+    assert _FakeYDL.opts["cookiefile"] == "/home/ubuntu/cookies.txt"
+    assert _FakeYDL.fetched_urls == ["https://captions/abc"]

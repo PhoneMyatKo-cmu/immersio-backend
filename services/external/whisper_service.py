@@ -1,6 +1,9 @@
+import logging
 from typing import Optional
 
 from faster_whisper import WhisperModel
+
+logger = logging.getLogger(__name__)
 
 
 _MODEL: Optional[WhisperModel] = None
@@ -8,10 +11,13 @@ _MODEL_SIZE: Optional[str] = None
 
 
 def _detect_device():
+    # Ask CTranslate2 (faster-whisper's engine) rather than torch: torch can
+    # report no GPU when its CUDA build is newer than the driver, even though
+    # CTranslate2 can use the GPU with its own CUDA 12 libraries.
     try:
-        import torch
+        import ctranslate2
 
-        if torch.cuda.is_available():
+        if ctranslate2.get_cuda_device_count() > 0:
             return "cuda", "float16"
     except Exception:
         pass
@@ -22,6 +28,7 @@ def get_model(model_size: str = "medium") -> WhisperModel:
     global _MODEL, _MODEL_SIZE
     if _MODEL is None or _MODEL_SIZE != model_size:
         device, compute_type = _detect_device()
+        logger.info(f"[whisper] loading {model_size} on {device} ({compute_type})")
         _MODEL = WhisperModel(model_size, device=device, compute_type=compute_type)
         _MODEL_SIZE = model_size
     return _MODEL
