@@ -15,7 +15,6 @@ Covers:
 used. Module skips if its import chain (httpx / yt_dlp / requests) is missing.
 """
 
-import io
 from unittest.mock import MagicMock
 
 import pytest
@@ -106,10 +105,9 @@ def test_returns_none_for_private_video(monkeypatch):
 
 
 class _FakeYDL:
-    """Captures the options passed to yt-dlp and fakes its network calls."""
+    """Captures the options download_audio passes to yt-dlp."""
 
     opts = None
-    fetched_urls = []
 
     def __init__(self, opts):
         _FakeYDL.opts = opts
@@ -123,12 +121,7 @@ class _FakeYDL:
     def extract_info(self, url, download):
         return {
             "requested_downloads": [{"filepath": "/tmp/abc.wav"}],
-            "subtitles": {"ja": [{"ext": "json3", "url": "https://captions/abc"}]},
         }
-
-    def urlopen(self, url):
-        _FakeYDL.fetched_urls.append(url)
-        return io.BytesIO(b'{"events": []}')
 
 
 @pytest.mark.parametrize(
@@ -151,12 +144,44 @@ def test_download_audio_passes_network_settings_only_when_set(
     assert network == expected
 
 
-def test_fetch_raw_captions_downloads_caption_file_through_yt_dlp(monkeypatch):
+class _FakeSubsYDL:
+    """Writes a json3 subtitle file where yt-dlp would, like --write-subs."""
+
+    opts = None
+
+    def __init__(self, opts):
+        _FakeSubsYDL.opts = opts
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+    def extract_info(self, url, download):
+        if self.write_file:
+            path = self.opts["outtmpl"].replace("%(id)s.%(ext)s", "abc.ja.json3")
+            with open(path, "w", encoding="utf-8") as f:
+                f.write('{"events": []}')
+        return {}
+
+
+def test_fetch_raw_captions_reads_subtitle_file_written_by_yt_dlp(monkeypatch):
     monkeypatch.setattr(svc, "YOUTUBE_PROXY", None)
     monkeypatch.setattr(svc, "YOUTUBE_COOKIES", "/home/ubuntu/cookies.txt")
-    monkeypatch.setattr(svc.yt_dlp, "YoutubeDL", _FakeYDL)
-    _FakeYDL.fetched_urls = []
+    monkeypatch.setattr(_FakeSubsYDL, "write_file", True, raising=False)
+    monkeypatch.setattr(svc.yt_dlp, "YoutubeDL", _FakeSubsYDL)
 
     assert svc.fetch_raw_captions("abc") == {"events": []}
-    assert _FakeYDL.opts["cookiefile"] == "/home/ubuntu/cookies.txt"
-    assert _FakeYDL.fetched_urls == ["https://captions/abc"]
+    opts = _FakeSubsYDL.opts
+    assert opts["cookiefile"] == "/home/ubuntu/cookies.txt"
+    assert opts["subtitleslangs"] == ["ja"] and opts["subtitlesformat"] == "json3"
+    assert opts["skip_download"] and opts["writesubtitles"] and opts["writeautomaticsub"]
+
+
+def test_fetch_raw_captions_raises_when_no_caption_file(monkeypatch):
+    monkeypatch.setattr(_FakeSubsYDL, "write_file", False, raising=False)
+    monkeypatch.setattr(svc.yt_dlp, "YoutubeDL", _FakeSubsYDL)
+
+    with pytest.raises(RuntimeError, match="No ja json3 captions"):
+        svc.fetch_raw_captions("abc")

@@ -1,5 +1,6 @@
 import json
 import os
+import tempfile
 
 import httpx
 import yt_dlp
@@ -95,34 +96,35 @@ def fetch_caption_tracks(video_id: str) -> list[dict]:
 
 
 def fetch_raw_captions(video_id: str, lang: str = "ja") -> dict:
-    """Sub-segments level caption fetching."""
+    """Sub-segments level caption fetching.
 
-    ydl_opts = {
-        "skip_download": True,
-        "quiet": True,
-        "no_warnings": True,
-        "format": None,
-        "extract_flat": False,
-        **_yt_dlp_network_opts(),
-    }
+    Lets yt-dlp's own subtitle downloader write the json3 file (the same path
+    as `yt-dlp --write-subs`), rather than fetching the caption URL ourselves —
+    a separate fetch of that URL gets 429'd from server IPs. Human subtitles
+    are preferred over auto-generated ones when both exist.
+    """
 
     url = f"https://www.youtube.com/watch?v={video_id}"
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(url, download=False)
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        ydl_opts = {
+            "skip_download": True,
+            "quiet": True,
+            "no_warnings": True,
+            "writesubtitles": True,
+            "writeautomaticsub": True,
+            "subtitleslangs": [lang],
+            "subtitlesformat": "json3",
+            "outtmpl": os.path.join(tmp_dir, "%(id)s.%(ext)s"),
+            **_yt_dlp_network_opts(),
+        }
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            ydl.extract_info(url, download=True)
 
-        subs = info.get("subtitles", {}).get(lang) or info.get(
-            "automatic_captions", {}
-        ).get(lang)
-        if not subs:
-            raise RuntimeError(f"No {lang} captions available for {video_id}")
-
-        json3_entry = next((s for s in subs if s["ext"] == "json3"), None)
-        if not json3_entry:
-            raise RuntimeError("No json3 format available")
-
-        # Fetch through yt-dlp so the caption file gets the same proxy/cookies.
-        data = json.loads(ydl.urlopen(json3_entry["url"]).read())
-    return data
+        caption_path = os.path.join(tmp_dir, f"{video_id}.{lang}.json3")
+        if not os.path.exists(caption_path):
+            raise RuntimeError(f"No {lang} json3 captions available for {video_id}")
+        with open(caption_path, encoding="utf-8") as f:
+            return json.load(f)
 
 def download_audio(url_or_id: str, out_dir: str, extract_wav: bool = False) -> str:
     """
