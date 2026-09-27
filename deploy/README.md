@@ -53,6 +53,24 @@ faster-whisper needs the CUDA libraries that ship with torch:
 
 Put the first command's output into `LD_LIBRARY_PATH` in `immersio.service`.
 
+### YouTube access (captions + audio from a server IP)
+
+YouTube blocks datacenter IPs, so on the server yt-dlp needs:
+
+- **Cookies** from a throwaway account (export from a private window, see the
+  yt-dlp wiki) at `~/cookies.txt`, `chmod 600`, and
+  `YOUTUBE_COOKIES=/home/ubuntu/cookies.txt` in `.env`.
+- **Deno** (JS challenge solver), system-wide so the service can find it:
+  `curl -fsSL https://deno.land/install.sh | sudo DENO_INSTALL=/usr/local sh -s -- -y`
+- **A PO token provider** — without a PO token, caption downloads get HTTP 429:
+
+```bash
+docker run --name bgutil-provider -d --restart unless-stopped -p 127.0.0.1:4416:4416 brainicism/bgutil-ytdlp-pot-provider
+~/venv/bin/pip install -U bgutil-ytdlp-pot-provider
+```
+
+  and `YOUTUBE_FETCH_POT=1` in `.env`.
+
 ### Service + HTTPS
 
 ```bash

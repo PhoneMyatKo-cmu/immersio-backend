@@ -214,3 +214,19 @@ def test_fetch_raw_captions_raises_when_file_not_written(monkeypatch):
 
     with pytest.raises(RuntimeError, match="No ja json3 captions"):
         svc.fetch_raw_captions("abc")
+
+
+@pytest.mark.parametrize("fetch_pot", [True, False])
+def test_fetch_raw_captions_forces_po_token_only_when_enabled(monkeypatch, fetch_pot):
+    monkeypatch.setattr(svc, "YOUTUBE_FETCH_POT", fetch_pot)
+    monkeypatch.setattr(_FakeSubsYDL, "info", {"subtitles": {"ja": []}})
+    monkeypatch.setattr(_FakeSubsYDL, "write_file", True)
+    monkeypatch.setattr(svc.yt_dlp, "YoutubeDL", _FakeSubsYDL)
+
+    svc.fetch_raw_captions("abc")
+
+    extractor_args = _FakeSubsYDL.instance.params.get("extractor_args")
+    if fetch_pot:
+        assert extractor_args == {"youtube": {"fetch_pot": ["always"]}}
+    else:
+        assert extractor_args is None

@@ -17,6 +17,10 @@ YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
 # calls don't need either.
 YOUTUBE_PROXY = os.getenv("YOUTUBE_PROXY") or None
 YOUTUBE_COOKIES = os.getenv("YOUTUBE_COOKIES") or None
+# YouTube 429s caption downloads that lack a PO token. With a PO token provider
+# running (bgutil-ytdlp-pot-provider, see deploy/README.md), set this to 1 so
+# yt-dlp always attaches one. Leave unset where no provider runs (local dev).
+YOUTUBE_FETCH_POT = os.getenv("YOUTUBE_FETCH_POT") == "1"
 
 
 def _yt_dlp_network_opts() -> dict:
@@ -133,6 +137,8 @@ def fetch_raw_captions(video_id: str, lang: str = "ja") -> dict:
             "outtmpl": os.path.join(tmp_dir, "%(id)s.%(ext)s"),
             **_yt_dlp_network_opts(),
         }
+        if YOUTUBE_FETCH_POT:
+            ydl_opts["extractor_args"] = {"youtube": {"fetch_pot": ["always"]}}
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             # process=False: read the available tracks without downloading.
             info = ydl.extract_info(url, download=False, process=False)
