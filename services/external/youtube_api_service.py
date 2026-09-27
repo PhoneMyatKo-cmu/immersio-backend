@@ -95,13 +95,31 @@ def fetch_caption_tracks(video_id: str) -> list[dict]:
     return data.get("items", [])
 
 
+def _pick_caption_track(info: dict, lang: str) -> tuple[str | None, bool]:
+    """Return (track key, is_auto) for the best caption track in `lang`.
+
+    Prefers human subtitles, then the original-language auto captions
+    ("<lang>-orig"). The bare auto "<lang>" track is a machine translation
+    (tlang=<lang>) that YouTube rate-limits hard (HTTP 429), so it is only a
+    last resort.
+    """
+    manual = info.get("subtitles") or {}
+    auto = info.get("automatic_captions") or {}
+    if lang in manual:
+        return lang, False
+    if f"{lang}-orig" in auto:
+        return f"{lang}-orig", True
+    if lang in auto:
+        return lang, True
+    return None, False
+
+
 def fetch_raw_captions(video_id: str, lang: str = "ja") -> dict:
     """Sub-segments level caption fetching.
 
-    Lets yt-dlp's own subtitle downloader write the json3 file (the same path
-    as `yt-dlp --write-subs`), rather than fetching the caption URL ourselves —
-    a separate fetch of that URL gets 429'd from server IPs. Human subtitles
-    are preferred over auto-generated ones when both exist.
+    Picks the caption track from the video's metadata first, then lets
+    yt-dlp's own subtitle downloader write that one json3 file (the same path
+    as `yt-dlp --write-subs`).
     """
 
     url = f"https://www.youtube.com/watch?v={video_id}"
@@ -110,17 +128,28 @@ def fetch_raw_captions(video_id: str, lang: str = "ja") -> dict:
             "skip_download": True,
             "quiet": True,
             "no_warnings": True,
-            "writesubtitles": True,
-            "writeautomaticsub": True,
-            "subtitleslangs": [lang],
+            "noprogress": True,
             "subtitlesformat": "json3",
             "outtmpl": os.path.join(tmp_dir, "%(id)s.%(ext)s"),
             **_yt_dlp_network_opts(),
         }
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            ydl.extract_info(url, download=True)
+            # process=False: read the available tracks without downloading.
+            info = ydl.extract_info(url, download=False, process=False)
+            track, is_auto = _pick_caption_track(info, lang)
+            if track is None:
+                raise RuntimeError(f"No {lang} captions available for {video_id}")
 
-        caption_path = os.path.join(tmp_dir, f"{video_id}.{lang}.json3")
+            ydl.params.update(
+                {
+                    "writesubtitles": not is_auto,
+                    "writeautomaticsub": is_auto,
+                    "subtitleslangs": [track],
+                }
+            )
+            ydl.process_ie_result(info, download=True)
+
+        caption_path = os.path.join(tmp_dir, f"{video_id}.{track}.json3")
         if not os.path.exists(caption_path):
             raise RuntimeError(f"No {lang} json3 captions available for {video_id}")
         with open(caption_path, encoding="utf-8") as f:

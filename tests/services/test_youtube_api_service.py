@@ -145,12 +145,15 @@ def test_download_audio_passes_network_settings_only_when_set(
 
 
 class _FakeSubsYDL:
-    """Writes a json3 subtitle file where yt-dlp would, like --write-subs."""
+    """Fake yt-dlp: reports available tracks, then writes the requested one."""
 
-    opts = None
+    info = {}
+    write_file = True
+    instance = None
 
     def __init__(self, opts):
-        _FakeSubsYDL.opts = opts
+        self.params = dict(opts)
+        _FakeSubsYDL.instance = self
 
     def __enter__(self):
         return self
@@ -158,29 +161,55 @@ class _FakeSubsYDL:
     def __exit__(self, *exc):
         return False
 
-    def extract_info(self, url, download):
+    def extract_info(self, url, download, process):
+        assert download is False and process is False
+        return _FakeSubsYDL.info
+
+    def process_ie_result(self, info, download):
         if self.write_file:
-            path = self.opts["outtmpl"].replace("%(id)s.%(ext)s", "abc.ja.json3")
+            track = self.params["subtitleslangs"][0]
+            path = self.params["outtmpl"].replace("%(id)s.%(ext)s", f"abc.{track}.json3")
             with open(path, "w", encoding="utf-8") as f:
-                f.write('{"events": []}')
-        return {}
+                f.write('{"events": ["%s"]}' % track)
 
 
-def test_fetch_raw_captions_reads_subtitle_file_written_by_yt_dlp(monkeypatch):
+@pytest.mark.parametrize(
+    ("info", "expected_track", "expected_auto"),
+    [
+        # Human subtitles win over auto captions.
+        ({"subtitles": {"ja": []}, "automatic_captions": {"ja-orig": [], "ja": []}}, "ja", False),
+        # Original-language ASR, not the machine-translated bare "ja".
+        ({"subtitles": {}, "automatic_captions": {"ja-orig": [], "ja": []}}, "ja-orig", True),
+        # Older metadata without -orig: fall back to bare "ja".
+        ({"automatic_captions": {"ja": []}}, "ja", True),
+    ],
+)
+def test_fetch_raw_captions_picks_best_track(monkeypatch, info, expected_track, expected_auto):
     monkeypatch.setattr(svc, "YOUTUBE_PROXY", None)
     monkeypatch.setattr(svc, "YOUTUBE_COOKIES", "/home/ubuntu/cookies.txt")
-    monkeypatch.setattr(_FakeSubsYDL, "write_file", True, raising=False)
+    monkeypatch.setattr(_FakeSubsYDL, "info", info)
+    monkeypatch.setattr(_FakeSubsYDL, "write_file", True)
     monkeypatch.setattr(svc.yt_dlp, "YoutubeDL", _FakeSubsYDL)
 
-    assert svc.fetch_raw_captions("abc") == {"events": []}
-    opts = _FakeSubsYDL.opts
-    assert opts["cookiefile"] == "/home/ubuntu/cookies.txt"
-    assert opts["subtitleslangs"] == ["ja"] and opts["subtitlesformat"] == "json3"
-    assert opts["skip_download"] and opts["writesubtitles"] and opts["writeautomaticsub"]
+    assert svc.fetch_raw_captions("abc") == {"events": [expected_track]}
+    params = _FakeSubsYDL.instance.params
+    assert params["cookiefile"] == "/home/ubuntu/cookies.txt"
+    assert params["subtitleslangs"] == [expected_track]
+    assert params["writeautomaticsub"] is expected_auto
+    assert params["writesubtitles"] is (not expected_auto)
 
 
-def test_fetch_raw_captions_raises_when_no_caption_file(monkeypatch):
-    monkeypatch.setattr(_FakeSubsYDL, "write_file", False, raising=False)
+def test_fetch_raw_captions_raises_when_no_japanese_track(monkeypatch):
+    monkeypatch.setattr(_FakeSubsYDL, "info", {"subtitles": {"en": []}, "automatic_captions": {"en-orig": []}})
+    monkeypatch.setattr(svc.yt_dlp, "YoutubeDL", _FakeSubsYDL)
+
+    with pytest.raises(RuntimeError, match="No ja captions available"):
+        svc.fetch_raw_captions("abc")
+
+
+def test_fetch_raw_captions_raises_when_file_not_written(monkeypatch):
+    monkeypatch.setattr(_FakeSubsYDL, "info", {"subtitles": {"ja": []}})
+    monkeypatch.setattr(_FakeSubsYDL, "write_file", False)
     monkeypatch.setattr(svc.yt_dlp, "YoutubeDL", _FakeSubsYDL)
 
     with pytest.raises(RuntimeError, match="No ja json3 captions"):
