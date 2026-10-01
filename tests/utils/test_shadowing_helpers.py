@@ -251,6 +251,7 @@ def test_analyze_pitch_accent_composes_pitch_pipeline(monkeypatch, shadowing_hel
         return normalized_target
 
     monkeypatch.setattr(shadowing_helpers, "extract_pitch", fake_extract_pitch)
+    monkeypatch.setattr(shadowing_helpers.os.path, "getmtime", lambda path: 0.0)
     monkeypatch.setattr(shadowing_helpers, "normalize_pitch", fake_normalize_pitch)
     monkeypatch.setattr(
         shadowing_helpers, "compare_pitch", lambda ref, target: comparison
@@ -389,3 +390,76 @@ def test_extract_pitch_records_load_and_pyin_timings(monkeypatch, shadowing_help
 
     assert set(timer.steps) == {"ref_load", "ref_pyin"}
     assert timer.notes == {"ref_audio_s": 1.0}
+
+
+
+def _counting_extract_pitch(calls):
+    def fake_extract_pitch(audio_path, sr, start_time, end_time, timer=None, label="audio"):
+        calls.append((audio_path, start_time, end_time))
+        return np.array([100.0, 200.0, 150.0]), sr
+    return fake_extract_pitch
+
+
+def test_reference_pitch_is_computed_once_per_sentence(monkeypatch, shadowing_helpers, tmp_path):
+    from utils.step_timer import StepTimer
+
+    ref = tmp_path / "ref.wav"
+    ref.write_bytes(b"x")
+    calls = []
+    monkeypatch.setattr(shadowing_helpers, "extract_pitch", _counting_extract_pitch(calls))
+
+    first_timer, second_timer = StepTimer(), StepTimer()
+    first = shadowing_helpers.get_reference_pitch(str(ref), 22050, 5.71, 9.49, timer=first_timer)
+    second = shadowing_helpers.get_reference_pitch(str(ref), 22050, 5.71, 9.49, timer=second_timer)
+
+    assert len(calls) == 1
+    assert second is first
+    assert not first.flags.writeable  # shared array is protected from modification
+    assert first_timer.notes["ref_cache_hit"] == 0
+    assert second_timer.notes["ref_cache_hit"] == 1
+
+
+def test_reference_pitch_cache_key_rounds_to_milliseconds(monkeypatch, shadowing_helpers, tmp_path):
+    ref = tmp_path / "ref.wav"
+    ref.write_bytes(b"x")
+    calls = []
+    monkeypatch.setattr(shadowing_helpers, "extract_pitch", _counting_extract_pitch(calls))
+
+    shadowing_helpers.get_reference_pitch(str(ref), 22050, 5.71, 9.49)
+    shadowing_helpers.get_reference_pitch(str(ref), 22050, 5.7100001, 9.4899999)  # same sentence
+    shadowing_helpers.get_reference_pitch(str(ref), 22050, 9.49, 12.0)  # different sentence
+
+    assert calls == [(str(ref), 5.71, 9.49), (str(ref), 9.49, 12.0)]
+
+
+def test_reference_pitch_recomputed_when_reference_file_changes(monkeypatch, shadowing_helpers, tmp_path):
+    import os
+
+    ref = tmp_path / "ref.wav"
+    ref.write_bytes(b"x")
+    calls = []
+    monkeypatch.setattr(shadowing_helpers, "extract_pitch", _counting_extract_pitch(calls))
+
+    shadowing_helpers.get_reference_pitch(str(ref), 22050, 1.0, 2.0)
+    stat = os.stat(ref)
+    os.utime(ref, (stat.st_atime, stat.st_mtime + 10))  # re-downloaded file
+    shadowing_helpers.get_reference_pitch(str(ref), 22050, 1.0, 2.0)
+
+    assert len(calls) == 2
+
+
+def test_reference_pitch_cache_evicts_least_recently_used(monkeypatch, shadowing_helpers, tmp_path):
+    ref = tmp_path / "ref.wav"
+    ref.write_bytes(b"x")
+    calls = []
+    monkeypatch.setattr(shadowing_helpers, "extract_pitch", _counting_extract_pitch(calls))
+    monkeypatch.setattr(shadowing_helpers, "_REF_PITCH_CACHE_MAX", 2)
+
+    shadowing_helpers.get_reference_pitch(str(ref), 22050, 1.0, 2.0)  # A
+    shadowing_helpers.get_reference_pitch(str(ref), 22050, 2.0, 3.0)  # B
+    shadowing_helpers.get_reference_pitch(str(ref), 22050, 1.0, 2.0)  # A again: most recent
+    shadowing_helpers.get_reference_pitch(str(ref), 22050, 3.0, 4.0)  # C evicts B
+    shadowing_helpers.get_reference_pitch(str(ref), 22050, 1.0, 2.0)  # A still cached
+    shadowing_helpers.get_reference_pitch(str(ref), 22050, 2.0, 3.0)  # B recomputed
+
+    assert [c[1] for c in calls] == [1.0, 2.0, 3.0, 2.0]

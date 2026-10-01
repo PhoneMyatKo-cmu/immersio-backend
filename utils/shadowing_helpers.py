@@ -1,4 +1,8 @@
 
+import os
+import threading
+from collections import OrderedDict
+
 import librosa
 import torch
 import whisper
@@ -97,9 +101,48 @@ def calculate_cer(reference, target):
     cer = d[len(ref_chars)][len(tgt_chars)] / len(ref_chars)
     return cer, wrong_indices
 
+# Reference pitch per sentence never changes, so keep recent ones in memory.
+# Lost on restart; the first attempt per sentence after a restart recomputes.
+_REF_PITCH_CACHE_MAX = 512
+_ref_pitch_cache: "OrderedDict[tuple, np.ndarray]" = OrderedDict()
+_ref_pitch_cache_lock = threading.Lock()
+
+
+def get_reference_pitch(audio_path, sr, start_time, end_time, timer=None):
+    """extract_pitch for the native audio, cached per (file, sentence window).
+
+    The key includes the file's modification time, so a re-downloaded reference
+    file is recomputed. Times are rounded to milliseconds for the key only.
+    """
+    key = (
+        audio_path,
+        os.path.getmtime(audio_path),
+        sr,
+        round(start_time * 1000),
+        None if end_time is None else round(end_time * 1000),
+    )
+    with _ref_pitch_cache_lock:
+        f0 = _ref_pitch_cache.get(key)
+        if f0 is not None:
+            _ref_pitch_cache.move_to_end(key)
+    if timer is not None:
+        timer.note("ref_cache_hit", 1 if f0 is not None else 0)
+    if f0 is not None:
+        return f0
+
+    f0, _ = extract_pitch(audio_path, sr, start_time, end_time, timer=timer, label="ref")
+    f0.setflags(write=False)  # shared between requests; must not be modified
+    with _ref_pitch_cache_lock:
+        _ref_pitch_cache[key] = f0
+        _ref_pitch_cache.move_to_end(key)
+        while len(_ref_pitch_cache) > _REF_PITCH_CACHE_MAX:
+            _ref_pitch_cache.popitem(last=False)
+    return f0
+
+
 def analyze_pitch_accent(ref_audio_path, target_audio_path, sr=22050,
                          start_time=0.0, end_time=None, timer=None):
-    f0_ref, sr_ref = extract_pitch(ref_audio_path, sr, start_time, end_time, timer=timer, label="ref")
+    f0_ref = get_reference_pitch(ref_audio_path, sr, start_time, end_time, timer=timer)
     f0_target, sr_target = extract_pitch(target_audio_path, sr, 0.0, None, timer=timer, label="user")
 
     normalized_ref    = normalize_pitch(f0_ref)
