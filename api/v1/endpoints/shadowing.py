@@ -1,6 +1,7 @@
 import base64
 import io
 import logging
+from concurrent.futures import ThreadPoolExecutor, wait
 from pathlib import Path
 
 import fugashi
@@ -26,6 +27,9 @@ from utils.step_timer import StepTimer, timed
 
 logger = logging.getLogger(__name__)
 
+# Background threads for pitch analysis, so it overlaps with transcription.
+_pitch_executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="pitch")
+
 router = APIRouter(prefix="/shadowing")
 
 
@@ -43,41 +47,54 @@ def pronunciation_score(
     )
     timer = StepTimer()
     with timed(timer, "read_upload"):
-        audio = io.BytesIO(file.file.read())
-    # Transcribe the audio and convert to katakana
-    user_katakana = transcribe_audio(audio, timer=timer)
-    print(f"User katakana: {user_katakana}")
-    # Compare with the caption (also converted to katakana)
-    with timed(timer, "caption_compare"):
-        caption_katakana = convert_to_katakana(caption)
-        cer, wrong_indices = calculate_cer(caption_katakana, user_katakana)
-        caption_error = get_caption_error(caption_katakana, wrong_indices)
-    print(f"Caption katakana: {caption_katakana}")
-    print(f"CER: {cer}")
-    print(f"Caption error: {caption_error}")
-
-    # Download reference audio
-    if video_id and Path(f"temp_audios/{video_id}.wav").exists() == False:
-        print(f"Downloading audio for video ID: {video_id}")
-        with timed(timer, "ref_download"):
-            download_audio(video_id, "temp_audios", extract_wav=True)
-
+        audio_bytes = file.file.read()
+    upload_path = f"temp_audios/uploaded_{file.filename}"
     with timed(timer, "write_upload"):
-        with open(f"temp_audios/uploaded_{file.filename}", "wb") as f:
-            audio.seek(0)
-            f.write(audio.read())
-    # Analyze pitch accent
-    print(f"Analyzing pitch accent for video ID: {video_id}")
-    pitch_result = analyze_pitch_accent(
-        f"temp_audios/{video_id}.wav",
-        f"temp_audios/uploaded_{file.filename}",
-        start_time=start_time,
-        end_time=end_time,
-        timer=timer,
-    )
-    print(f"Pitch score: {pitch_result['score']}")
-    # Delete temporary audio files
-    Path(f"temp_audios/uploaded_{file.filename}").unlink(missing_ok=True)
+        with open(upload_path, "wb") as f:
+            f.write(audio_bytes)
+
+    def run_pitch_analysis():
+        # Download reference audio
+        if video_id and Path(f"temp_audios/{video_id}.wav").exists() == False:
+            print(f"Downloading audio for video ID: {video_id}")
+            with timed(timer, "ref_download"):
+                download_audio(video_id, "temp_audios", extract_wav=True)
+        print(f"Analyzing pitch accent for video ID: {video_id}")
+        return analyze_pitch_accent(
+            f"temp_audios/{video_id}.wav",
+            upload_path,
+            start_time=start_time,
+            end_time=end_time,
+            timer=timer,
+        )
+
+    pitch_future = None
+    try:
+        # Pitch analysis (CPU) doesn't depend on the transcript, so run it
+        # alongside Whisper (GPU) instead of after it.
+        pitch_future = _pitch_executor.submit(run_pitch_analysis)
+
+        # Transcribe the audio and convert to katakana
+        user_katakana = transcribe_audio(io.BytesIO(audio_bytes), timer=timer)
+        print(f"User katakana: {user_katakana}")
+        # Compare with the caption (also converted to katakana)
+        with timed(timer, "caption_compare"):
+            caption_katakana = convert_to_katakana(caption)
+            cer, wrong_indices = calculate_cer(caption_katakana, user_katakana)
+            caption_error = get_caption_error(caption_katakana, wrong_indices)
+        print(f"Caption katakana: {caption_katakana}")
+        print(f"CER: {cer}")
+        print(f"Caption error: {caption_error}")
+
+        with timed(timer, "wait_pitch"):
+            pitch_result = pitch_future.result()
+        print(f"Pitch score: {pitch_result['score']}")
+    finally:
+        # If transcription failed, let the pitch thread finish with the file first.
+        if pitch_future is not None:
+            wait([pitch_future])
+        # Delete temporary audio files
+        Path(upload_path).unlink(missing_ok=True)
 
     logger.info(f"[score-timing] video={video_id} {timer.summary()}")
 

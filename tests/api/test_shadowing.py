@@ -189,3 +189,39 @@ def test_explain_pronunciation_score_returns_500_when_feedback_fails(
 
     assert response.status_code == 500
     assert response.json() == {"detail": "Service Unavailable"}
+
+
+def test_pronunciation_score_cleans_up_after_pitch_when_transcription_fails(
+    monkeypatch, tmp_path, shadowing_client
+):
+    import threading
+
+    temp_audios = tmp_path / "temp_audios"
+    temp_audios.mkdir()
+    (temp_audios / "yt123.wav").write_bytes(b"ref")
+    monkeypatch.chdir(tmp_path)
+    pitch_started = threading.Event()
+    upload_seen_by_pitch = {}
+
+    def failing_transcribe(audio, timer=None):
+        pitch_started.wait(timeout=5)  # make sure pitch is running in parallel
+        raise RuntimeError("whisper failed")
+
+    def slow_pitch(ref_audio_path, target_audio_path, timer=None, **kwargs):
+        pitch_started.set()
+        threading.Event().wait(0.2)  # still reading when transcription fails
+        upload_seen_by_pitch["exists"] = (tmp_path / target_audio_path).exists()
+        return {"score": 1.0, "aligned_target": _Pitch([]), "aligned_ref": _Pitch([])}
+
+    monkeypatch.setattr(shadowing_endpoint, "transcribe_audio", failing_transcribe)
+    monkeypatch.setattr(shadowing_endpoint, "analyze_pitch_accent", slow_pitch)
+
+    with pytest.raises(RuntimeError, match="whisper failed"):
+        shadowing_client.post(
+            "/shadowing/pronunciation_score",
+            data={"caption": "こんにちは", "start_time": "1.5", "end_time": "3.0", "video_id": "yt123"},
+            files={"file": ("sample.wav", b"fake-audio", "audio/wav")},
+        )
+
+    assert upload_seen_by_pitch == {"exists": True}  # not deleted under the pitch thread
+    assert not (temp_audios / "uploaded_sample.wav").exists()  # cleaned up afterwards
