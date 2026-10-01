@@ -1,5 +1,6 @@
 import base64
 import io
+import logging
 from pathlib import Path
 
 import fugashi
@@ -21,6 +22,9 @@ from utils.shadowing_helpers import (
     get_caption_error,
     transcribe_audio,
 )
+from utils.step_timer import StepTimer, timed
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/shadowing")
 
@@ -37,26 +41,31 @@ def pronunciation_score(
     print(
         f"File: {file.filename}\nFile Type: {file.content_type}\nCaption: {caption}\nStart Time: {start_time}\nEnd Time: {end_time}\nVideo ID: {video_id}"
     )
-    audio = io.BytesIO(file.file.read())
+    timer = StepTimer()
+    with timed(timer, "read_upload"):
+        audio = io.BytesIO(file.file.read())
     # Transcribe the audio and convert to katakana
-    user_katakana = transcribe_audio(audio)
+    user_katakana = transcribe_audio(audio, timer=timer)
     print(f"User katakana: {user_katakana}")
     # Compare with the caption (also converted to katakana)
-    caption_katakana = convert_to_katakana(caption)
+    with timed(timer, "caption_compare"):
+        caption_katakana = convert_to_katakana(caption)
+        cer, wrong_indices = calculate_cer(caption_katakana, user_katakana)
+        caption_error = get_caption_error(caption_katakana, wrong_indices)
     print(f"Caption katakana: {caption_katakana}")
-    cer, wrong_indices = calculate_cer(caption_katakana, user_katakana)
-    caption_error = get_caption_error(caption_katakana, wrong_indices)
     print(f"CER: {cer}")
     print(f"Caption error: {caption_error}")
 
     # Download reference audio
     if video_id and Path(f"temp_audios/{video_id}.wav").exists() == False:
         print(f"Downloading audio for video ID: {video_id}")
-        download_audio(video_id, "temp_audios", extract_wav=True)
+        with timed(timer, "ref_download"):
+            download_audio(video_id, "temp_audios", extract_wav=True)
 
-    with open(f"temp_audios/uploaded_{file.filename}", "wb") as f:
-        audio.seek(0)
-        f.write(audio.read())
+    with timed(timer, "write_upload"):
+        with open(f"temp_audios/uploaded_{file.filename}", "wb") as f:
+            audio.seek(0)
+            f.write(audio.read())
     # Analyze pitch accent
     print(f"Analyzing pitch accent for video ID: {video_id}")
     pitch_result = analyze_pitch_accent(
@@ -64,10 +73,13 @@ def pronunciation_score(
         f"temp_audios/uploaded_{file.filename}",
         start_time=start_time,
         end_time=end_time,
+        timer=timer,
     )
     print(f"Pitch score: {pitch_result['score']}")
     # Delete temporary audio files
     Path(f"temp_audios/uploaded_{file.filename}").unlink(missing_ok=True)
+
+    logger.info(f"[score-timing] video={video_id} {timer.summary()}")
 
     return {
         "cer": cer,

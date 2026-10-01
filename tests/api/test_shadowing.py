@@ -42,7 +42,7 @@ def test_pronunciation_score_returns_metrics_and_pitch_data(
     monkeypatch.chdir(tmp_path)
     calls = {}
 
-    def fake_transcribe_audio(audio):
+    def fake_transcribe_audio(audio, timer=None):
         calls["audio_bytes"] = audio.read()
         audio.seek(0)
         return "コンニチハ"
@@ -54,7 +54,7 @@ def test_pronunciation_score_returns_metrics_and_pitch_data(
             "extract_wav": extract_wav,
         }
 
-    def fake_analyze_pitch_accent(ref_audio_path, target_audio_path, **kwargs):
+    def fake_analyze_pitch_accent(ref_audio_path, target_audio_path, timer=None, **kwargs):
         calls["analyze_pitch_accent"] = {
             "ref_audio_path": ref_audio_path,
             "target_audio_path": target_audio_path,

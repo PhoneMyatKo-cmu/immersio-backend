@@ -11,15 +11,18 @@ import matplotlib.pyplot as plt
 from yt_dlp import YoutubeDL
 
 from services.external.whisper_service import get_model, transcribe_words
+from utils.step_timer import timed
 
 tagger = fugashi.Tagger()
 
-def transcribe_audio(file):
+def transcribe_audio(file, timer=None):
     # Transcribe the audio
-    seg = transcribe_words(file, get_model("medium"), language="ja", vad_filter=True, word_timestamps=False)
+    with timed(timer, "whisper"):
+        seg = transcribe_words(file, get_model("medium"), language="ja", vad_filter=True, word_timestamps=False)
     text = ''.join([s.text for s in seg])
     # Convert the transcription to katakana using fugashi
-    words = convert_to_katakana(text)
+    with timed(timer, "katakana"):
+        words = convert_to_katakana(text)
     return words
 
 def warm_up_scoring():
@@ -95,14 +98,15 @@ def calculate_cer(reference, target):
     return cer, wrong_indices
 
 def analyze_pitch_accent(ref_audio_path, target_audio_path, sr=22050,
-                         start_time=0.0, end_time=None):
-    f0_ref, sr_ref = extract_pitch(ref_audio_path, sr, start_time, end_time)
-    f0_target, sr_target = extract_pitch(target_audio_path, sr, 0.0, None)
+                         start_time=0.0, end_time=None, timer=None):
+    f0_ref, sr_ref = extract_pitch(ref_audio_path, sr, start_time, end_time, timer=timer, label="ref")
+    f0_target, sr_target = extract_pitch(target_audio_path, sr, 0.0, None, timer=timer, label="user")
 
     normalized_ref    = normalize_pitch(f0_ref)
     normalized_target = normalize_pitch(f0_target)
 
-    comparison = compare_pitch(normalized_ref, normalized_target)
+    with timed(timer, "dtw"):
+        comparison = compare_pitch(normalized_ref, normalized_target)
     score = score_accent(comparison["normalized_distance"])
 
     return {
@@ -114,21 +118,26 @@ def analyze_pitch_accent(ref_audio_path, target_audio_path, sr=22050,
         "aligned_target": comparison["aligned_target"]
     }
 
-def extract_pitch(audio_path: str, sr: int = 22050, start_time: float = 0.0, end_time: float = None) -> (np.ndarray, int):
+def extract_pitch(audio_path: str, sr: int = 22050, start_time: float = 0.0, end_time: float = None,
+                  timer=None, label: str = "audio") -> (np.ndarray, int):
     # Decode only the requested window instead of the whole file — reference
     # audio is the full video, so loading it all costs seconds per request.
     duration = end_time - start_time if end_time is not None else None
-    y, sr = librosa.load(audio_path, sr=sr, offset=start_time, duration=duration)
+    with timed(timer, f"{label}_load"):
+        y, sr = librosa.load(audio_path, sr=sr, offset=start_time, duration=duration)
+    if timer is not None:
+        timer.note(f"{label}_audio_s", len(y) / sr)
 
     # pyin is more accurate than yin for voiced/unvoiced detection
-    f0, voiced_flag, voiced_probs = librosa.pyin(
-        y,
-        fmin=librosa.note_to_hz('C2'),   # ~65 Hz  — lowest expected pitch
-        fmax=librosa.note_to_hz('C6'),   # ~1047 Hz — well above speech F0; higher picks are octave errors/noise
-        sr=sr,
-        frame_length=2048,
-        hop_length=256,
-    )
+    with timed(timer, f"{label}_pyin"):
+        f0, voiced_flag, voiced_probs = librosa.pyin(
+            y,
+            fmin=librosa.note_to_hz('C2'),   # ~65 Hz  — lowest expected pitch
+            fmax=librosa.note_to_hz('C6'),   # ~1047 Hz — well above speech F0; higher picks are octave errors/noise
+            sr=sr,
+            frame_length=2048,
+            hop_length=256,
+        )
 
     # pyin returns NaN for unvoiced frames — replace with 0
     # f0 = np.nan_to_num(f0, nan=0.0)

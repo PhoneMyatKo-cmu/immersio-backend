@@ -239,7 +239,7 @@ def test_analyze_pitch_accent_composes_pitch_pipeline(monkeypatch, shadowing_hel
     }
     score = {"grade": "Good", "score": 75.0}
 
-    def fake_extract_pitch(audio_path, sr, start_time, end_time):
+    def fake_extract_pitch(audio_path, sr, start_time, end_time, timer=None, label="audio"):
         calls.append((audio_path, sr, start_time, end_time))
         if audio_path == "reference.wav":
             return ref_pitch, sr
@@ -372,3 +372,20 @@ def test_warm_up_scoring_loads_model_and_runs_pyin(monkeypatch, shadowing_helper
         ("transcribe", model, 16000, {"language": "ja", "vad_filter": False, "word_timestamps": False}),
         ("pyin", 16000, 16000),
     ]
+
+
+
+def test_extract_pitch_records_load_and_pyin_timings(monkeypatch, shadowing_helpers):
+    from utils.step_timer import StepTimer
+
+    monkeypatch.setattr(
+        shadowing_helpers.librosa,
+        "load",
+        lambda path, **kwargs: (np.zeros(22050, dtype=float), kwargs["sr"]),
+    )
+    timer = StepTimer()
+
+    shadowing_helpers.extract_pitch("reference.wav", 22050, 1.0, 2.0, timer=timer, label="ref")
+
+    assert set(timer.steps) == {"ref_load", "ref_pyin"}
+    assert timer.notes == {"ref_audio_s": 1.0}
