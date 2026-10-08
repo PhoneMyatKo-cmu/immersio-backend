@@ -1,0 +1,76 @@
+name: CICD
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uvx ruff check .
+
+  test:
+    runs-on: ubuntu-latest
+    needs: lint                      # don't spend minutes on tests if lint fails
+
+    services:
+      postgres:
+        image: postgres:17           # same as docker-compose.yml
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: immersio_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      TEST_DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/immersio_test
+      # Read at import time by db/base.py and the auth/external services.
+      # Dummy values: tests stub the real calls.
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/immersio_test
+      SECURITY_KEY: ci-only-not-a-secret
+      ALGORITHM: HS256
+      ACCESS_TOKEN_EXPIRE_MINUTES: "30"
+      REFRESH_TOKEN_EXPIRE_DAYS: "7"
+      GEMINI_API_KEY: dummy
+      YOUTUBE_API_KEY: dummy
+      YOUTUBE_API_BASE_URL: https://www.googleapis.com/youtube/v3
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+
+      - name: Restore virtual environment (packages + UniDic)
+        id: venv-cache
+        uses: actions/cache@v4
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-py3.12-${{ hashFiles('requirements.txt') }}
+
+      - name: Install dependencies (only when the cache missed)
+        if: steps.venv-cache.outputs.cache-hit != 'true'
+        run: |
+          uv venv --python 3.12 .venv
+          uv pip install --python .venv -r requirements.txt pytest
+          .venv/bin/python -m unidic download
+
+      - name: Unit tests
+        run: .venv/bin/python -m pytest -m unit
+          --ignore=tests/utils/test_dictionary_lookup_helpers.py
+          --ignore=tests/utils/test_captions_helpers.py
+          --ignore=tests/services/test_vocab_services.py
+
+      - name: Integration tests
+        run: .venv/bin/python -m pytest -m integration
+          --ignore=tests/utils/test_dictionary_lookup_helpers.py
+          --ignore=tests/utils/test_captions_helpers.py
+          --ignore=tests/services/test_vocab_services.py
