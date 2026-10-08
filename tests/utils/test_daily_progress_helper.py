@@ -11,7 +11,7 @@ Covers docs/test_case_specification.pdf MD-129 .. MD-137:
   MD-134  calculate_new_vocab_seen()   - first-time vocab counted once; no exposure
   MD-135  calculate_new_vocab_known()  - only vocab newly crossing the threshold counts
   MD-136  calculate_streak()           - increments from the previous day; no prior day
-  MD-137  summarize_daily_progresses() - only requested metrics; latest-row / streak rules
+  MD-137  summarize_daily_progresses() - only requested metrics; unique videos / streak rules
 
 [integration] Self-contained in-memory SQLite session (`helper_db`).
 """
@@ -344,12 +344,31 @@ def test_only_requested_metrics_are_computed():
     assert out["streak"] is None
 
 
-def test_total_videos_watched_read_from_latest_record():
-    """total_videos_watched is taken from the last row, not summed."""
-    rows = [_progress(date(2026, 1, d), total_videos_watched=n)
-            for d, n in ((1, 3), (2, 5), (3, 8))]
-    out = summarize_daily_progresses(rows, ["total_videos_watched"], None)
-    assert out["total_videos_watched"] == 8
+def test_total_videos_watched_counts_unique_videos_up_to_last_day(helper_db):
+    """Counts distinct videos from the user's learning sessions that ended on or
+    before the last row's day; the rows' own total_videos_watched is ignored."""
+    learner = _seed_user(helper_db, "learner@example.com")
+    other = _seed_user(helper_db, "other@example.com")
+    v1 = _seed_video(helper_db, "vid00000001")
+    v2 = _seed_video(helper_db, "vid00000002")
+    v3 = _seed_video(helper_db, "vid00000003")
+
+    def session(sid, user, video, day, hour=10):
+        end = datetime(2026, 1, day, hour, 30)
+        _add_session(helper_db, sid, user.id, video.id, end - timedelta(minutes=20), end)
+
+    session("s1", learner, v1, day=1)
+    session("s2", learner, v1, day=2)            # same video again: still one video
+    session("s3", learner, v2, day=3, hour=23)   # late on the last day: counted
+    session("s4", learner, v3, day=4)            # after the last row's day: not counted
+    session("s5", other, v3, day=2)              # another user's session: not counted
+
+    rows = [DailyProgress(user_id=learner.id, day=date(2026, 1, d), total_videos_watched=99)
+            for d in (1, 2, 3)]
+
+    out = summarize_daily_progresses(rows, ["total_videos_watched"], helper_db)
+
+    assert out["total_videos_watched"] == 2      # v1 and v2
 
 
 def test_streak_resolution_and_fallback():
