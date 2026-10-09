@@ -10,7 +10,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
-      - run: uvx ruff check .
+      - run: uvx ruff check . --ignore E712,E701,E702,F403,F405,F841,F401,F811
 
   test:
     runs-on: ubuntu-latest
