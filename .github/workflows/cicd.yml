@@ -76,3 +76,44 @@ jobs:
           --ignore=tests/utils/test_captions_helpers.py
           --ignore=tests/services/test_vocab_services.py
           --ignore=tests/api
+
+  deploy:
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/prod'   
+    runs-on: ubuntu-latest
+    concurrency: deploy            # never run two deploys at the same time
+
+    steps:
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          echo "${{ secrets.DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+
+      - name: Deploy the tested commit
+        run: |
+          ssh -i ~/.ssh/deploy_key ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} bash -s -- "${{ github.sha }}" <<'EOF'
+          set -e
+          SHA="$1"
+          cd ~/immersio-backend
+          PREVIOUS=$(git rev-parse HEAD)
+          echo "$PREVIOUS" > ~/.last_good_deploy
+          git fetch --quiet origin
+          git checkout --quiet "$SHA"
+          ~/venv/bin/pip install -q -r requirements.txt
+          sudo systemctl restart immersio
+          EOF
+
+      - name: Health check (rollback on failure)
+        run: |
+          for i in $(seq 1 18); do       # up to ~90 s: Whisper loads at startup
+            if curl -fsS https://<your-api-host>/ > /dev/null; then
+              echo "Healthy"; exit 0
+            fi
+            sleep 5
+          done
+          echo "Health check failed, rolling back"
+          ssh -i ~/.ssh/deploy_key ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} \
+            'cd ~/immersio-backend && git checkout --quiet "$(cat ~/.last_good_deploy)" && ~/venv/bin/pip install -q -r requirements.txt && sudo systemctl restart immersio'
+          exit 1 
