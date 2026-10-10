@@ -81,9 +81,27 @@ jobs:
     needs: test
     if: github.event_name == 'push' && github.ref == 'refs/heads/prod'   
     runs-on: ubuntu-latest
-    concurrency: deploy            # never run two deploys at the same time
+    concurrency: deploy  # never run two deploys at the same time
+    environment: Production          
 
     steps:
+      - name: Check deploy secrets are set
+        env:
+          HOST: ${{ secrets.DEPLOY_HOST }}
+          USER: ${{ secrets.DEPLOY_USER }}
+          KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          missing=""
+          [ -n "$HOST" ]  || missing="$missing DEPLOY_HOST"
+          [ -n "$USER" ]  || missing="$missing DEPLOY_USER"
+          [ -n "$KEY" ]   || missing="$missing DEPLOY_SSH_KEY"
+          [ -n "$KNOWN" ] || missing="$missing DEPLOY_KNOWN_HOSTS"
+          if [ -n "$missing" ]; then
+            echo "::error::Missing deploy secrets:$missing (check the job's 'environment:' and the secret names)"
+            exit 1
+          fi  
+          
       - name: Set up SSH
         run: |
           mkdir -p ~/.ssh
