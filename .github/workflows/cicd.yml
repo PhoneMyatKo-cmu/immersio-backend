@@ -101,7 +101,7 @@ jobs:
             echo "::error::Missing deploy secrets:$missing (check the job's 'environment:' and the secret names)"
             exit 1
           fi  
-          
+
       - name: Set up SSH
         run: |
           mkdir -p ~/.ssh
@@ -126,7 +126,7 @@ jobs:
       - name: Health check (rollback on failure)
         run: |
           for i in $(seq 1 18); do       # up to ~90 s: Whisper loads at startup
-            if curl -fsS https://<your-api-host>/ > /dev/null; then
+            if curl -fsS https://52-77-115-201.sslip.io/ > /dev/null; then
               echo "Healthy"; exit 0
             fi
             sleep 5
