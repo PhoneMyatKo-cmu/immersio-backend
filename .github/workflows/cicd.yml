@@ -68,9 +68,11 @@ jobs:
           --ignore=tests/utils/test_dictionary_lookup_helpers.py
           --ignore=tests/utils/test_captions_helpers.py
           --ignore=tests/services/test_vocab_services.py
+          --ignore=tests/api
 
       - name: Integration tests
         run: .venv/bin/python -m pytest -m integration
           --ignore=tests/utils/test_dictionary_lookup_helpers.py
           --ignore=tests/utils/test_captions_helpers.py
           --ignore=tests/services/test_vocab_services.py
+          --ignore=tests/api

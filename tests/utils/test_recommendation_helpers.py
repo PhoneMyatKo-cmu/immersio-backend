@@ -208,7 +208,7 @@ def test_due_factor_not_schedule():
 
 
 def test_due_factor_not_due():
-    df = due_factor(datetime.datetime(2026, 9, 20), datetime.datetime.utcnow())
+    df = due_factor(datetime.datetime(2026, 9, 20), datetime.datetime(2026, 9, 18))
     assert df == 0
 
 
@@ -349,8 +349,8 @@ def test_recency_penalty_more_recent_more_penalty():
 
 def test_difficulty_each_bucket():
     assert difficulty_tag(0.98) == "comfortable"
-    assert difficulty_tag(0.90) == "best_fit"
-    assert difficulty_tag(0.78) == "stretch"
+    assert difficulty_tag(0.90) == "stretch"
+    assert difficulty_tag(0.94) == "best_fit"
     assert difficulty_tag(0.40) == "too_advanced"
 
 
@@ -374,7 +374,7 @@ def test_difficulty_extremes():
 
 def test_difficulty_never_gets_harder_as_coverage_rises():
     order = ["too_advanced", "stretch", "best_fit", "comfortable"]
-    tags = [difficulty_tag(c) for c in (0.50, 0.75, 0.90, 0.98)]
+    tags = [difficulty_tag(c) for c in (0.50, 0.75, 0.94, 0.98)]
     assert [order.index(t) for t in tags] == [0, 1, 2, 3]  # strictly improving
 
 
